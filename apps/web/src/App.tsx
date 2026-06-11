@@ -1,8 +1,11 @@
+import { getAction } from '@idle-rpg/core';
 import { useEffect } from 'react';
 import { InventoryPanel } from './components/InventoryPanel';
 import { OfflineModal } from './components/OfflineModal';
+import { SettingsPanel } from './components/SettingsPanel';
 import { Sidebar } from './components/Sidebar';
 import { SkillPanel } from './components/SkillPanel';
+import { Toasts } from './components/Toasts';
 import { TopBar } from './components/TopBar';
 import { useGame } from './store';
 
@@ -12,6 +15,17 @@ const AUTOSAVE_MS = 5000;
 export default function App() {
   const panel = useGame((s) => s.panel);
   const offline = useGame((s) => s.offline);
+  const activeKey = useGame((s) => s.game.activeActions.map((a) => a.actionId).join(','));
+
+  useEffect(() => {
+    const ids = activeKey === '' ? [] : activeKey.split(',');
+    document.title =
+      ids.length === 0
+        ? 'Idle RPG (가제)'
+        : ids.length === 1
+          ? `[${getAction(ids[0]).name}] Idle RPG`
+          : `[작업 ${ids.length}개] Idle RPG`;
+  }, [activeKey]);
 
   useEffect(() => {
     const tickId = setInterval(() => useGame.getState().tick(), TICK_MS);
@@ -35,9 +49,16 @@ export default function App() {
       <div className="layout">
         <Sidebar />
         <main className="main">
-          {panel === 'inventory' ? <InventoryPanel /> : <SkillPanel skillId={panel} />}
+          {panel === 'inventory' ? (
+            <InventoryPanel />
+          ) : panel === 'settings' ? (
+            <SettingsPanel />
+          ) : (
+            <SkillPanel skillId={panel} />
+          )}
         </main>
       </div>
+      <Toasts />
       {offline && <OfflineModal gains={offline} />}
     </div>
   );

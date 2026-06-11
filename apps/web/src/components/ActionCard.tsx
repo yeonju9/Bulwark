@@ -1,4 +1,5 @@
 import { getItem, type ActionDef } from '@idle-rpg/core';
+import { formatNumber } from '../format';
 import { useGame } from '../store';
 
 export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLevel: number }) {
@@ -32,6 +33,10 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
       <div className="action-name">{action.name}</div>
       <div className="action-meta">
         {(action.durationMs / 1000).toFixed(1)}초 · {action.xp} XP
+      </div>
+      <div className="action-meta action-rate">
+        시간당 {formatNumber(Math.round((3_600_000 / action.durationMs) * action.outputs[0].qty))}개
+        · {formatNumber(Math.round((3_600_000 / action.durationMs) * action.xp))} XP
       </div>
 
       {action.inputs && (

@@ -27,7 +27,7 @@ export function Sidebar() {
                 {skill.name}
                 {activeActions.some((a) => a.skillId === skill.id) && <span className="pulse-dot" />}
               </span>
-              <span className="sidebar-level">Lv {level}</span>
+              <span className="sidebar-level" key={level}>Lv {level}</span>
               <span className="xp-bar">
                 <span className="xp-bar-fill" style={{ width: `${pct}%` }} />
               </span>
@@ -43,6 +43,15 @@ export function Sidebar() {
         <span className="sidebar-info">
           <span className="sidebar-name">인벤토리</span>
           <span className="sidebar-level">{itemCount}종</span>
+        </span>
+      </button>
+      <button
+        className={`sidebar-item sidebar-bottom ${panel === 'settings' ? 'selected' : ''}`}
+        onClick={() => setPanel('settings')}
+      >
+        <span className="sidebar-icon">⚙️</span>
+        <span className="sidebar-info">
+          <span className="sidebar-name">설정</span>
         </span>
       </button>
     </nav>
