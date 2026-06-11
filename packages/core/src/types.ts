@@ -57,7 +57,16 @@ export interface GameState {
   gold: number;
   skills: Record<SkillId, SkillState>;
   inventory: Record<ItemId, number>;
-  activeAction: ActiveAction | null;
+  /**
+   * 진행 중인 작업 목록. 동시 작업 수는 슬롯(unlockedActionSlots)으로 제한되고,
+   * 같은 스킬의 작업은 동시에 하나만 가능하다.
+   */
+  activeActions: ActiveAction[];
+}
+
+export interface StoppedAction {
+  actionId: ActionId;
+  reason: 'out-of-materials';
 }
 
 /** simulate() 한 번이 만들어낸 변화 요약. 오프라인 정산 화면 등에 사용 */
@@ -70,8 +79,8 @@ export interface Gains {
   levelUps: Partial<Record<SkillId, { from: number; to: number }>>;
   itemsGained: Record<ItemId, number>;
   itemsConsumed: Record<ItemId, number>;
-  /** 재료 고갈로 진행 중 액션이 멈췄는지 */
-  stopped: 'out-of-materials' | null;
+  /** 재료 고갈 등으로 진행 중 멈춘 작업들 */
+  stopped: StoppedAction[];
 }
 
 export interface SimResult {

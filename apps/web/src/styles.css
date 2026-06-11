@@ -65,6 +65,17 @@ body {
   color: var(--accent);
 }
 
+.topbar-slots {
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.topbar-slots-hint {
+  font-size: 12px;
+  color: var(--accent-dim);
+}
+
 /* ---------- 레이아웃 ---------- */
 .layout {
   display: flex;

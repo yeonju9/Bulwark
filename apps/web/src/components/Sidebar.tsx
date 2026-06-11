@@ -6,7 +6,7 @@ export function Sidebar() {
   const inventory = useGame((s) => s.game.inventory);
   const panel = useGame((s) => s.panel);
   const setPanel = useGame((s) => s.setPanel);
-  const active = useGame((s) => s.game.activeAction);
+  const activeActions = useGame((s) => s.game.activeActions);
 
   const itemCount = Object.keys(inventory).length;
 
@@ -25,7 +25,7 @@ export function Sidebar() {
             <span className="sidebar-info">
               <span className="sidebar-name">
                 {skill.name}
-                {active?.skillId === skill.id && <span className="pulse-dot" />}
+                {activeActions.some((a) => a.skillId === skill.id) && <span className="pulse-dot" />}
               </span>
               <span className="sidebar-level">Lv {level}</span>
               <span className="xp-bar">

@@ -1,5 +1,6 @@
 import { getItem, ITEMS } from './data/items';
 import { ACTIONS } from './data/skills';
+import { unlockedActionSlots } from './slots';
 import { levelFromXp } from './xp';
 import type { ActionId, GameState, ItemId } from './types';
 
@@ -20,6 +21,13 @@ export interface CommandResult {
  * 호출 전에 simulate()로 시간을 정산한 상태를 넘기는 것이 전제.
  * 실패 시 원본 상태를 그대로 돌려주고 error를 채운다.
  */
+
+/**
+ * 작업 시작 규칙:
+ * - 같은 스킬의 작업이 이미 돌고 있으면 그 작업을 교체한다 (슬롯 소모 없음)
+ * - 빈 슬롯이 있으면 새 슬롯에서 시작한다
+ * - 슬롯이 가득 차 있으면 가장 오래된 작업을 멈추고 교체한다
+ */
 export function startAction(state: GameState, actionId: ActionId): CommandResult {
   const action = ACTIONS.get(actionId);
   if (!action) return { state, error: 'unknown-action' };
@@ -36,14 +44,27 @@ export function startAction(state: GameState, actionId: ActionId): CommandResult
   }
 
   const next = structuredClone(state);
-  next.activeAction = { skillId: action.skillId, actionId: action.id, progressMs: 0 };
+  const newAction = { skillId: action.skillId, actionId: action.id, progressMs: 0 };
+
+  const sameSkillIndex = next.activeActions.findIndex((a) => a.skillId === action.skillId);
+  if (sameSkillIndex >= 0) {
+    next.activeActions[sameSkillIndex] = newAction;
+  } else {
+    if (next.activeActions.length >= unlockedActionSlots(next)) {
+      next.activeActions.shift();
+    }
+    next.activeActions.push(newAction);
+  }
   return { state: next };
 }
 
-export function stopAction(state: GameState): CommandResult {
-  if (!state.activeAction) return { state };
+/** actionId를 주면 해당 작업만, 생략하면 모든 작업을 중지한다 */
+export function stopAction(state: GameState, actionId?: ActionId): CommandResult {
+  if (state.activeActions.length === 0) return { state };
   const next = structuredClone(state);
-  next.activeAction = null;
+  next.activeActions = actionId
+    ? next.activeActions.filter((a) => a.actionId !== actionId)
+    : [];
   return { state: next };
 }
 

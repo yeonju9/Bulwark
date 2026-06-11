@@ -3,13 +3,14 @@ import { useGame } from '../store';
 
 export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLevel: number }) {
   const inventory = useGame((s) => s.game.inventory);
-  const active = useGame((s) => s.game.activeAction);
+  const activeActions = useGame((s) => s.game.activeActions);
   const start = useGame((s) => s.start);
   const stop = useGame((s) => s.stop);
 
   const locked = skillLevel < action.levelRequired;
-  const isActive = active?.actionId === action.id;
-  const progressPct = isActive && active ? (active.progressMs / action.durationMs) * 100 : 0;
+  const activeEntry = activeActions.find((a) => a.actionId === action.id);
+  const isActive = activeEntry !== undefined;
+  const progressPct = activeEntry ? (activeEntry.progressMs / action.durationMs) * 100 : 0;
 
   const missingMaterial = (action.inputs ?? []).some(
     (input) => (inventory[input.itemId] ?? 0) < input.qty,
@@ -63,7 +64,7 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
       </div>
 
       {isActive ? (
-        <button className="btn btn-stop" onClick={stop}>
+        <button className="btn btn-stop" onClick={() => stop(action.id)}>
           중지
         </button>
       ) : (

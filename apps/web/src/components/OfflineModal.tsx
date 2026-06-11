@@ -1,4 +1,4 @@
-import { getItem, getSkill, type Gains, type SkillId } from '@idle-rpg/core';
+import { getAction, getItem, getSkill, type Gains, type SkillId } from '@idle-rpg/core';
 import { formatDuration, formatNumber } from '../format';
 import { useGame } from '../store';
 
@@ -53,9 +53,11 @@ export function OfflineModal({ gains }: { gains: Gains }) {
           </div>
         )}
 
-        {gains.stopped === 'out-of-materials' && (
-          <p className="modal-warn">⚠️ 재료가 떨어져 작업이 중단되었습니다.</p>
-        )}
+        {gains.stopped.map((s) => (
+          <p key={s.actionId} className="modal-warn">
+            ⚠️ {getAction(s.actionId).name} — 재료가 떨어져 중단되었습니다.
+          </p>
+        ))}
 
         <button className="btn btn-primary" onClick={dismiss}>
           확인

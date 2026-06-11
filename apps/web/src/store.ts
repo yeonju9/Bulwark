@@ -22,7 +22,7 @@ interface GameStore {
   setPanel(panel: Panel): void;
   tick(): void;
   start(actionId: ActionId): void;
-  stop(): void;
+  stop(actionId?: ActionId): void;
   sell(itemId: ItemId, qty: number | 'all'): void;
   dismissOffline(): void;
   save(): void;
@@ -55,9 +55,9 @@ export const useGame = create<GameStore>((set, get) => ({
     if (!error) set({ game: state });
   },
 
-  stop: () => {
+  stop: (actionId) => {
     const settled = simulate(get().game, Date.now()).state;
-    set({ game: stopAction(settled).state });
+    set({ game: stopAction(settled, actionId).state });
   },
 
   sell: (itemId, qty) => {

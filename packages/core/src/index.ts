@@ -3,5 +3,6 @@ export * from './xp';
 export * from './state';
 export * from './simulate';
 export * from './commands';
+export * from './slots';
 export { ITEMS, getItem } from './data/items';
 export { SKILLS, ACTIONS, getAction, actionsForSkill, getSkill } from './data/skills';
