@@ -48,10 +48,10 @@ export default function App() {
     const ids = activeKey === '' ? [] : activeKey.split(',');
     document.title =
       ids.length === 0
-        ? 'Idle RPG (가제)'
+        ? 'Winterforge — 윈터포지'
         : ids.length === 1
-          ? `[${getAction(ids[0]).name}] Idle RPG`
-          : `[작업 ${ids.length}개] Idle RPG`;
+          ? `[${getAction(ids[0]).name}] Winterforge`
+          : `[작업 ${ids.length}개] Winterforge`;
   }, [activeKey]);
 
   useEffect(() => {

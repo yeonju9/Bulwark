@@ -19,7 +19,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <h1 className="topbar-title">⚔️ Idle RPG</h1>
+      <h1 className="topbar-title">❄️ Winterforge</h1>
       <div className="topbar-status">
         {game.activeActions.length > 0 ? (
           game.activeActions.map((active) => {
