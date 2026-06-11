@@ -4,12 +4,16 @@ import { simulate } from './simulate';
 import { nextSlotUnlock, totalLevel, unlockedActionSlots } from './slots';
 import { createInitialState, migrateSave, SAVE_VERSION } from './state';
 import { levelFromXp, xpForLevel } from './xp';
-import type { GameState } from './types';
+import type { GameState, SkillId, SkillState } from './types';
 
 const T0 = 1_000_000;
 
 function stateWith(patch?: Partial<GameState>): GameState {
   return { ...createInitialState(T0), ...patch };
+}
+
+function skillsWith(patch: Partial<Record<SkillId, SkillState>>): Record<SkillId, SkillState> {
+  return { ...createInitialState(T0).skills, ...patch };
 }
 
 function stateWithAction(actionId: string, patch?: Partial<GameState>): GameState {
@@ -85,26 +89,22 @@ describe('simulate — 오프라인 정산', () => {
 });
 
 describe('작업 슬롯', () => {
-  // 벌목 레벨 28 → 총 레벨 28+1+1 = 30 → 2슬롯
-  const twoSlotSkills = {
-    woodcutting: { xp: xpForLevel(28) },
-    mining: { xp: 0 },
-    smithing: { xp: 0 },
-  };
+  // 벌목 28 → 총 레벨 28+1+1+1+10 = 41 ≥ 40 → 2슬롯
+  const twoSlotSkills = skillsWith({ woodcutting: { xp: xpForLevel(28) } });
 
-  it('1슬롯으로 시작하고 총 레벨 30/90에서 확장된다', () => {
+  it('1슬롯으로 시작하고 총 레벨 40/100에서 확장된다', () => {
     const fresh = stateWith();
-    expect(totalLevel(fresh)).toBe(3);
+    expect(totalLevel(fresh)).toBe(14); // 채집·제작 1×3 + 공격 1 + 체력 10
     expect(unlockedActionSlots(fresh)).toBe(1);
-    expect(nextSlotUnlock(fresh)).toEqual({ slots: 2, totalLevel: 30 });
+    expect(nextSlotUnlock(fresh)).toEqual({ slots: 2, totalLevel: 40 });
 
     const mid = stateWith({ skills: twoSlotSkills });
     expect(unlockedActionSlots(mid)).toBe(2);
 
     const high = stateWith({
-      skills: { woodcutting: { xp: xpForLevel(40) }, mining: { xp: xpForLevel(40) }, smithing: { xp: xpForLevel(10) } },
+      skills: skillsWith({ woodcutting: { xp: xpForLevel(60) }, mining: { xp: xpForLevel(28) } }),
     });
-    expect(totalLevel(high)).toBe(90);
+    expect(totalLevel(high)).toBe(100);
     expect(unlockedActionSlots(high)).toBe(3);
     expect(nextSlotUnlock(high)).toBeNull();
   });

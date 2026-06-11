@@ -2,14 +2,16 @@ import { getItem, ITEMS } from './data/items';
 import { ACTIONS } from './data/skills';
 import { unlockedActionSlots } from './slots';
 import { levelFromXp } from './xp';
-import type { ActionId, GameState, ItemId } from './types';
+import type { ActionId, EquipSlot, GameState, ItemId } from './types';
 
 export type CommandError =
   | 'unknown-action'
   | 'level-too-low'
   | 'missing-materials'
   | 'unknown-item'
-  | 'not-enough-items';
+  | 'not-enough-items'
+  | 'not-equippable'
+  | 'not-food';
 
 export interface CommandResult {
   state: GameState;
@@ -65,6 +67,47 @@ export function stopAction(state: GameState, actionId?: ActionId): CommandResult
   next.activeActions = actionId
     ? next.activeActions.filter((a) => a.actionId !== actionId)
     : [];
+  return { state: next };
+}
+
+/** 인벤토리의 장비를 장착. 같은 슬롯에 끼고 있던 장비는 인벤토리로 돌아간다 */
+export function equipItem(state: GameState, itemId: ItemId): CommandResult {
+  const item = ITEMS.get(itemId);
+  if (!item) return { state, error: 'unknown-item' };
+  if (!item.equip) return { state, error: 'not-equippable' };
+  if ((state.inventory[itemId] ?? 0) < 1) return { state, error: 'not-enough-items' };
+  const attackLevel = levelFromXp(state.skills.attack.xp);
+  if (attackLevel < (item.equip.levelRequired ?? 1)) return { state, error: 'level-too-low' };
+
+  const next = structuredClone(state);
+  const slot = item.equip.slot;
+  const left = next.inventory[itemId]! - 1;
+  if (left > 0) next.inventory[itemId] = left;
+  else delete next.inventory[itemId];
+  const previous = next.equipment[slot];
+  if (previous) next.inventory[previous] = (next.inventory[previous] ?? 0) + 1;
+  next.equipment[slot] = itemId;
+  return { state: next };
+}
+
+export function unequipItem(state: GameState, slot: EquipSlot): CommandResult {
+  const equipped = state.equipment[slot];
+  if (!equipped) return { state };
+  const next = structuredClone(state);
+  next.inventory[equipped] = (next.inventory[equipped] ?? 0) + 1;
+  next.equipment[slot] = null;
+  return { state: next };
+}
+
+/** 사냥 중 자동 섭취할 음식 지정 (null이면 해제) */
+export function setCombatFood(state: GameState, itemId: ItemId | null): CommandResult {
+  if (itemId !== null) {
+    const item = ITEMS.get(itemId);
+    if (!item) return { state, error: 'unknown-item' };
+    if (!item.food) return { state, error: 'not-food' };
+  }
+  const next = structuredClone(state);
+  next.combatFood = itemId;
   return { state: next };
 }
 

@@ -1,23 +1,38 @@
 import {
   actionsForSkill,
+  attemptDungeon,
   createInitialState,
+  equipItem,
   getAction,
   getSkill,
   sellItem,
+  setCombatFood,
   simulate,
   startAction,
   stopAction,
+  unequipItem,
   unlockedActionSlots,
   type ActionId,
+  type DungeonId,
+  type DungeonResult,
+  type EquipSlot,
   type GameState,
   type Gains,
   type ItemId,
   type SkillId,
+  type StoppedAction,
 } from '@idle-rpg/core';
 import { create } from 'zustand';
 import { clearSave, loadSave, persistSave } from './save';
 
-export type Panel = SkillId | 'inventory' | 'settings';
+export type Panel =
+  | SkillId
+  | 'inventory'
+  | 'settings'
+  | 'character'
+  | 'hunt'
+  | 'dungeon'
+  | 'collection';
 
 export interface Toast {
   id: number;
@@ -29,11 +44,17 @@ interface GameStore {
   offline: Gains | null;
   panel: Panel;
   toasts: Toast[];
+  dungeonResult: DungeonResult | null;
   setPanel(panel: Panel): void;
   tick(): void;
   start(actionId: ActionId): void;
   stop(actionId?: ActionId): void;
   sell(itemId: ItemId, qty: number | 'all'): void;
+  equip(itemId: ItemId): void;
+  unequip(slot: EquipSlot): void;
+  setFood(itemId: ItemId | null): void;
+  enterDungeon(dungeonId: DungeonId): void;
+  dismissDungeonResult(): void;
   dismissOffline(): void;
   save(): void;
   importGame(state: GameState): void;
@@ -46,6 +67,13 @@ const OFFLINE_MODAL_THRESHOLD_MS = 60_000;
 const TOAST_DURATION_MS = 3500;
 const MAX_TOASTS = 4;
 let toastSeq = 0;
+
+export function stoppedActionText(stopped: StoppedAction): string {
+  const name = getAction(stopped.actionId).name;
+  return stopped.reason === 'low-hp'
+    ? `⚠️ ${name} — 체력이 부족해 사냥을 중단했습니다`
+    : `⚠️ ${name} — 재료가 떨어져 중단되었습니다`;
+}
 
 function bootstrap(): { game: GameState; offline: Gains | null } {
   const saved = loadSave();
@@ -78,7 +106,7 @@ function toastMessages(prev: GameState, next: GameState, gains: Gains): string[]
   }
 
   for (const stopped of gains.stopped) {
-    messages.push(`⚠️ ${getAction(stopped.actionId).name} — 재료가 떨어져 중단되었습니다`);
+    messages.push(stoppedActionText(stopped));
   }
 
   return messages;
@@ -88,6 +116,7 @@ export const useGame = create<GameStore>((set, get) => ({
   ...bootstrap(),
   panel: 'woodcutting',
   toasts: [],
+  dungeonResult: null,
 
   setPanel: (panel) => set({ panel }),
 
@@ -119,6 +148,43 @@ export const useGame = create<GameStore>((set, get) => ({
     const { state, error } = sellItem(settled, itemId, qty);
     if (!error) set({ game: state });
   },
+
+  equip: (itemId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = equipItem(settled, itemId);
+    if (error === 'level-too-low') get().pushToast('❌ 공격 레벨이 부족해 장착할 수 없습니다');
+    if (!error) set({ game: state });
+  },
+
+  unequip: (slot) => {
+    const settled = simulate(get().game, Date.now()).state;
+    set({ game: unequipItem(settled, slot).state });
+  },
+
+  setFood: (itemId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = setCombatFood(settled, itemId);
+    if (!error) set({ game: state });
+  },
+
+  enterDungeon: (dungeonId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error, result } = attemptDungeon(settled, dungeonId, Date.now());
+    if (error === 'combat-in-progress') {
+      get().pushToast('❌ 사냥을 중단한 뒤 던전에 입장할 수 있습니다');
+      return;
+    }
+    if (error === 'on-cooldown') {
+      get().pushToast('⏳ 아직 재정비 중입니다');
+      return;
+    }
+    if (!error && result) {
+      set({ game: state, dungeonResult: result });
+      persistSave(state);
+    }
+  },
+
+  dismissDungeonResult: () => set({ dungeonResult: null }),
 
   dismissOffline: () => set({ offline: null }),
 

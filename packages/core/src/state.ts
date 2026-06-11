@@ -1,6 +1,10 @@
+import { xpForLevel } from './xp';
 import type { ActiveAction, GameState } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
+
+/** 체력 스킬 시작 레벨 (최대 HP = 10×레벨 → 시작 100) */
+export const STARTING_HITPOINTS_LEVEL = 10;
 
 export function createInitialState(now: number): GameState {
   return {
@@ -12,9 +16,16 @@ export function createInitialState(now: number): GameState {
       woodcutting: { xp: 0 },
       mining: { xp: 0 },
       smithing: { xp: 0 },
+      attack: { xp: 0 },
+      hitpoints: { xp: xpForLevel(STARTING_HITPOINTS_LEVEL) },
     },
     inventory: {},
     activeActions: [],
+    equipment: { weapon: null, armor: null },
+    hp: 10 * STARTING_HITPOINTS_LEVEL,
+    combatFood: null,
+    monsterKills: {},
+    dungeonCooldowns: {},
   };
 }
 
@@ -35,6 +46,25 @@ export function migrateSave(raw: unknown): GameState | null {
       ...rest,
       version: 2,
       activeActions: activeAction ? [activeAction] : [],
+    };
+  }
+
+  // v2 → v3: 전투 도입 — 전투 스킬, 장비, HP, 음식 슬롯, 도감, 던전 쿨다운
+  if (data.version === 2) {
+    const skills = data.skills as Record<string, { xp: number }>;
+    data = {
+      ...data,
+      version: 3,
+      skills: {
+        ...skills,
+        attack: { xp: 0 },
+        hitpoints: { xp: xpForLevel(STARTING_HITPOINTS_LEVEL) },
+      },
+      equipment: { weapon: null, armor: null },
+      hp: 10 * STARTING_HITPOINTS_LEVEL,
+      combatFood: null,
+      monsterKills: {},
+      dungeonCooldowns: {},
     };
   }
 

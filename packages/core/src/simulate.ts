@@ -1,5 +1,6 @@
+import { grantXp, settleHunt } from './combat/hunt';
+import { computeStats, REGEN_PER_MINUTE_PER_HP_LEVEL } from './combat/stats';
 import { getAction } from './data/skills';
-import { levelFromXp } from './xp';
 import type { ActiveAction, Gains, GameState, SimResult } from './types';
 
 /** 오프라인 진행 인정 상한 (12시간) */
@@ -17,6 +18,7 @@ function emptyGains(elapsedMs: number, discardedMs: number): Gains {
     levelUps: {},
     itemsGained: {},
     itemsConsumed: {},
+    kills: {},
     stopped: [],
   };
 }
@@ -41,14 +43,25 @@ export function simulate(state: GameState, now: number, opts?: SimulateOptions):
   next.lastTickAt = now;
   const gains = emptyGains(elapsedMs, rawElapsed - elapsedMs);
 
-  if (next.activeActions.length === 0 || elapsedMs <= 0) {
+  if (elapsedMs <= 0) {
     return { state: next, gains };
   }
 
   const stillActive: ActiveAction[] = [];
+  let combatActive = false;
 
   for (const active of next.activeActions) {
     const action = getAction(active.actionId);
+
+    if (action.combat) {
+      const keep = settleHunt(next, active, action, elapsedMs, gains);
+      if (keep) {
+        stillActive.push(active);
+        combatActive = true;
+      }
+      continue;
+    }
+
     const budgetMs = active.progressMs + elapsedMs;
     let cycles = Math.floor(budgetMs / action.durationMs);
     let outOfMaterials = false;
@@ -81,15 +94,7 @@ export function simulate(state: GameState, now: number, opts?: SimulateOptions):
         next.inventory[output.itemId] = (next.inventory[output.itemId] ?? 0) + got;
         gains.itemsGained[output.itemId] = (gains.itemsGained[output.itemId] ?? 0) + got;
       }
-
-      const skill = next.skills[action.skillId];
-      const levelBefore = levelFromXp(skill.xp);
-      skill.xp += action.xp * cycles;
-      const levelAfter = levelFromXp(skill.xp);
-      gains.xp[action.skillId] = (gains.xp[action.skillId] ?? 0) + action.xp * cycles;
-      if (levelAfter > levelBefore) {
-        gains.levelUps[action.skillId] = { from: levelBefore, to: levelAfter };
-      }
+      grantXp(next, gains, action.skillId, action.xp * cycles);
     }
 
     if (outOfMaterials) {
@@ -101,5 +106,15 @@ export function simulate(state: GameState, now: number, opts?: SimulateOptions):
   }
 
   next.activeActions = stillActive;
+
+  // 비전투 시 HP 자연 회복: 분당 체력 레벨만큼
+  if (!combatActive) {
+    const stats = computeStats(next);
+    next.hp = Math.min(
+      stats.maxHp,
+      next.hp + (elapsedMs / 60_000) * stats.hpLevel * REGEN_PER_MINUTE_PER_HP_LEVEL,
+    );
+  }
+
   return { state: next, gains };
 }

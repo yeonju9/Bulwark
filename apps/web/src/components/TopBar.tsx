@@ -1,4 +1,10 @@
-import { getAction, nextSlotUnlock, totalLevel, unlockedActionSlots } from '@idle-rpg/core';
+import {
+  computeStats,
+  getAction,
+  nextSlotUnlock,
+  totalLevel,
+  unlockedActionSlots,
+} from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
 
@@ -9,6 +15,7 @@ export function TopBar() {
 
   const slots = unlockedActionSlots(game);
   const next = nextSlotUnlock(game);
+  const stats = computeStats(game);
 
   return (
     <header className="topbar">
@@ -30,9 +37,21 @@ export function TopBar() {
           <span className="topbar-idle">대기 중</span>
         )}
       </div>
-      <div className="topbar-slots" title={next ? `총 레벨 ${next.totalLevel} 달성 시 슬롯 +1 (현재 총 레벨 ${totalLevel(game)})` : '모든 슬롯 해금됨'}>
+      <div
+        className="topbar-slots"
+        title={
+          next
+            ? `총 레벨(모든 스킬 레벨의 합)이 ${next.totalLevel}이 되면 작업 슬롯 +1`
+            : '모든 작업 슬롯을 해금했습니다'
+        }
+      >
         슬롯 {game.activeActions.length}/{slots}
-        {next && <span className="topbar-slots-hint"> · 총 Lv {next.totalLevel}에 +1</span>}
+        <span className="topbar-slots-hint">
+          {next ? ` · 총 Lv ${totalLevel(game)}/${next.totalLevel}` : ` · 총 Lv ${totalLevel(game)}`}
+        </span>
+      </div>
+      <div className="topbar-hp" title="HP — 사냥 중이 아닐 때 자연 회복됩니다">
+        ❤️ {Math.floor(game.hp)}/{stats.maxHp}
       </div>
       <div className="topbar-gold">🪙 {formatNumber(gold)}</div>
     </header>

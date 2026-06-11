@@ -7,8 +7,9 @@ import type { GameState } from './types';
  * 장기적으로는 던전 클리어/시즌 보상 등 다른 해금 조건이 추가될 수 있다.
  */
 export const SLOT_UNLOCKS: ReadonlyArray<{ slots: number; totalLevel: number }> = [
-  { slots: 2, totalLevel: 30 },
-  { slots: 3, totalLevel: 90 },
+  // 시작 총 레벨이 14 (채집·제작 1×3 + 공격 1 + 체력 10)이므로 기준도 그만큼 상향
+  { slots: 2, totalLevel: 40 },
+  { slots: 3, totalLevel: 100 },
 ];
 
 export function totalLevel(state: GameState): number {

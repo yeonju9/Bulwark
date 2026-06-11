@@ -1,6 +1,6 @@
-import { getAction, getItem, getSkill, type Gains, type SkillId } from '@idle-rpg/core';
+import { getItem, getMonster, getSkill, type Gains, type SkillId } from '@idle-rpg/core';
 import { formatDuration, formatNumber } from '../format';
-import { useGame } from '../store';
+import { stoppedActionText, useGame } from '../store';
 
 export function OfflineModal({ gains }: { gains: Gains }) {
   const dismiss = useGame((s) => s.dismissOffline);
@@ -8,6 +8,7 @@ export function OfflineModal({ gains }: { gains: Gains }) {
   const xpEntries = Object.entries(gains.xp) as [SkillId, number][];
   const itemEntries = Object.entries(gains.itemsGained);
   const levelUpEntries = Object.entries(gains.levelUps) as [SkillId, { from: number; to: number }][];
+  const killEntries = Object.entries(gains.kills);
 
   return (
     <div className="modal-backdrop">
@@ -43,6 +44,17 @@ export function OfflineModal({ gains }: { gains: Gains }) {
           </div>
         )}
 
+        {killEntries.length > 0 && (
+          <div className="modal-section">
+            {killEntries.map(([monsterId, count]) => (
+              <div key={monsterId}>
+                {getMonster(monsterId).icon} {getMonster(monsterId).name} {formatNumber(count)}마리
+                처치
+              </div>
+            ))}
+          </div>
+        )}
+
         {itemEntries.length > 0 && (
           <div className="modal-section">
             {itemEntries.map(([itemId, qty]) => (
@@ -55,7 +67,7 @@ export function OfflineModal({ gains }: { gains: Gains }) {
 
         {gains.stopped.map((s) => (
           <p key={s.actionId} className="modal-warn">
-            ⚠️ {getAction(s.actionId).name} — 재료가 떨어져 중단되었습니다.
+            {stoppedActionText(s)}
           </p>
         ))}
 
