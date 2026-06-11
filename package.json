@@ -1,0 +1,15 @@
+{
+  "name": "idle-rpg",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @idle-rpg/web",
+    "dev:server": "npm run build -w @idle-rpg/core && npm run dev -w @idle-rpg/server",
+    "build": "npm run build -w @idle-rpg/core && npm run build -w @idle-rpg/web && npm run build -w @idle-rpg/server",
+    "test": "npm run test -w @idle-rpg/core",
+    "typecheck": "npm run build -w @idle-rpg/core && npm run typecheck -w @idle-rpg/web && npm run typecheck -w @idle-rpg/server"
+  }
+}
