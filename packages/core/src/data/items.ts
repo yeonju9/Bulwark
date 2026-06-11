@@ -10,11 +10,13 @@ const list: ItemDef[] = [
   // 채광 산출물
   { id: 'copper_ore', name: '구리 광석', icon: '🪨', sellPrice: 2 },
   { id: 'iron_ore', name: '철 광석', icon: '🪨', sellPrice: 8 },
+  { id: 'silver_ore', name: '은 광석', icon: '🪨', sellPrice: 15 },
   { id: 'mithril_ore', name: '미스릴 광석', icon: '💎', sellPrice: 25 },
 
   // 제련 산출물
   { id: 'copper_bar', name: '구리 주괴', icon: '🟧', sellPrice: 6 },
   { id: 'iron_bar', name: '철 주괴', icon: '⬜', sellPrice: 20 },
+  { id: 'silver_bar', name: '은 주괴', icon: '⬜', sellPrice: 35 },
   { id: 'mithril_bar', name: '미스릴 주괴', icon: '🟦', sellPrice: 60 },
 
   // 장비 (전투 도입 전까지는 판매/도감용)

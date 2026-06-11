@@ -16,11 +16,13 @@ const list: ActionDef[] = [
   // 채광
   { id: 'mi_copper', skillId: 'mining', name: '구리 광맥', icon: '🪨', levelRequired: 1, durationMs: 3000, xp: 12, outputs: [{ itemId: 'copper_ore', qty: 1 }] },
   { id: 'mi_iron', skillId: 'mining', name: '철 광맥', icon: '🪨', levelRequired: 10, durationMs: 4500, xp: 30, outputs: [{ itemId: 'iron_ore', qty: 1 }] },
+  { id: 'mi_silver', skillId: 'mining', name: '은 광맥', icon: '🪨', levelRequired: 20, durationMs: 5000, xp: 42, outputs: [{ itemId: 'silver_ore', qty: 1 }] },
   { id: 'mi_mithril', skillId: 'mining', name: '미스릴 광맥', icon: '💎', levelRequired: 30, durationMs: 6000, xp: 65, outputs: [{ itemId: 'mithril_ore', qty: 1 }] },
 
   // 대장기술 — 제련
   { id: 'sm_copper_bar', skillId: 'smithing', name: '구리 제련', icon: '🟧', levelRequired: 1, durationMs: 2000, xp: 8, inputs: [{ itemId: 'copper_ore', qty: 1 }], outputs: [{ itemId: 'copper_bar', qty: 1 }] },
   { id: 'sm_iron_bar', skillId: 'smithing', name: '철 제련', icon: '⬜', levelRequired: 10, durationMs: 3000, xp: 20, inputs: [{ itemId: 'iron_ore', qty: 1 }], outputs: [{ itemId: 'iron_bar', qty: 1 }] },
+  { id: 'sm_silver_bar', skillId: 'smithing', name: '은 제련', icon: '⬜', levelRequired: 20, durationMs: 3500, xp: 30, inputs: [{ itemId: 'silver_ore', qty: 1 }], outputs: [{ itemId: 'silver_bar', qty: 1 }] },
   { id: 'sm_mithril_bar', skillId: 'smithing', name: '미스릴 제련', icon: '🟦', levelRequired: 30, durationMs: 4000, xp: 45, inputs: [{ itemId: 'mithril_ore', qty: 1 }], outputs: [{ itemId: 'mithril_bar', qty: 1 }] },
 
   // 대장기술 — 장비 제작
