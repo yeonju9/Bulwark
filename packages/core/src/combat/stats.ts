@@ -1,3 +1,4 @@
+import { combatBuffMultipliers } from '../buffs';
 import { getItem } from '../data/items';
 import { levelFromXp } from '../xp';
 import type { GameState, MonsterDef } from '../types';
@@ -33,6 +34,11 @@ export function computeStats(state: GameState): PlayerStats {
     attackPower += equip.attack ?? 0;
     defense += equip.defense ?? 0;
   }
+
+  // 전투 물약은 곱연산으로만 개입. 반올림으로 정수 유지 (틱/오프라인 동일성)
+  const buff = combatBuffMultipliers(state);
+  attackPower = Math.round(attackPower * buff.attack);
+  defense = Math.round(defense * buff.defense);
 
   return { attackLevel, hpLevel, maxHp: 10 * hpLevel, attackPower, defense };
 }

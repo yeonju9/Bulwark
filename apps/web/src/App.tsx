@@ -8,6 +8,7 @@ import { HuntPanel } from './components/HuntPanel';
 import { InventoryPanel } from './components/InventoryPanel';
 import { OfflineModal } from './components/OfflineModal';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ShopPanel } from './components/ShopPanel';
 import { Sidebar } from './components/Sidebar';
 import { SkillPanel } from './components/SkillPanel';
 import { Toasts } from './components/Toasts';
@@ -21,6 +22,8 @@ function MainPanel({ panel }: { panel: Panel }) {
   switch (panel) {
     case 'inventory':
       return <InventoryPanel />;
+    case 'shop':
+      return <ShopPanel />;
     case 'settings':
       return <SettingsPanel />;
     case 'character':

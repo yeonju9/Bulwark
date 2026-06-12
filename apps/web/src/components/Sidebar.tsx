@@ -87,6 +87,7 @@ export function Sidebar() {
         );
       })}
       <NavItem panel="inventory" icon="🎒" name="인벤토리" sub={`${Object.keys(inventory).length}종`} />
+      <NavItem panel="shop" icon="🏪" name="상점" />
       <NavItem panel="settings" icon="⚙️" name="설정" bottom />
     </nav>
   );

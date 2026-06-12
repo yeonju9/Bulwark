@@ -24,10 +24,14 @@ export function hashString(s: string): number {
 }
 
 /**
- * 몬스터별 "전역 처치 순번"을 시드로 쓰는 전리품 난수.
- * 같은 몬스터의 n번째 처치는 언제 어떤 틱 패턴으로 정산되어도 같은 전리품을 준다
+ * "키 + 전역 순번"을 시드로 쓰는 난수 스트림.
+ * 같은 키의 n번째 사건은 언제 어떤 틱 패턴으로 정산되어도 같은 결과를 준다
  * → 실시간 틱과 오프라인 일괄 정산의 결과가 완전히 일치한다.
+ * 키: 몬스터 id(전리품), 액션 id(채집 부산물) 등.
  */
-export function lootRollsForKill(monsterId: string, killIndex: number): () => number {
-  return mulberry32(hashString(monsterId) ^ Math.imul(killIndex + 1, 2654435761));
+export function seededRolls(key: string, index: number): () => number {
+  return mulberry32(hashString(key) ^ Math.imul(index + 1, 2654435761));
 }
+
+/** 몬스터별 전역 처치 순번 시드 전리품 난수 (seededRolls의 별칭) */
+export const lootRollsForKill = seededRolls;

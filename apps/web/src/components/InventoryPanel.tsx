@@ -1,10 +1,11 @@
 import { getItem } from '@idle-rpg/core';
-import { formatNumber } from '../format';
+import { formatNumber, potionEffectText } from '../format';
 import { useGame } from '../store';
 
 export function InventoryPanel() {
   const inventory = useGame((s) => s.game.inventory);
   const sell = useGame((s) => s.sell);
+  const drink = useGame((s) => s.drink);
 
   const entries = Object.entries(inventory).sort(([a], [b]) => a.localeCompare(b));
 
@@ -26,7 +27,15 @@ export function InventoryPanel() {
                 <div className="action-name">{item.name}</div>
                 <div className="action-meta">×{formatNumber(qty)}</div>
                 <div className="action-meta">개당 🪙 {formatNumber(item.sellPrice)}</div>
+                {item.potion && (
+                  <div className="action-meta action-rate">{potionEffectText(item.potion)}</div>
+                )}
                 <div className="inventory-actions">
+                  {item.potion && (
+                    <button className="btn btn-small" onClick={() => drink(itemId)}>
+                      마시기
+                    </button>
+                  )}
                   <button className="btn btn-small" onClick={() => sell(itemId, 1)}>
                     1개 판매
                   </button>

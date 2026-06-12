@@ -5,9 +5,11 @@ export * from './simulate';
 export * from './commands';
 export * from './slots';
 export * from './rng';
+export * from './buffs';
 export * from './combat/stats';
 export * from './combat/dungeon';
 export { ITEMS, getItem } from './data/items';
+export { UPGRADES, getUpgrade, UPGRADE_SPEED_PER_STAGE } from './data/upgrades';
 export {
   SKILLS,
   COMBAT_SKILL_IDS,

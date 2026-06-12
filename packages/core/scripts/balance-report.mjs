@@ -4,7 +4,10 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { SKILLS, SLOT_UNLOCKS, actionsForSkill, xpForLevel, MAX_LEVEL } = require('../dist/index.js');
+const {
+  ACTIONS, ITEMS, SKILLS, SLOT_UNLOCKS, UPGRADES,
+  actionsForSkill, getSkill, xpForLevel, MAX_LEVEL,
+} = require('../dist/index.js');
 
 function fmt(ms) {
   const totalMin = ms / 60000;
@@ -91,10 +94,64 @@ function greedyTotalLevelTime(targetTotal) {
   return ms;
 }
 
-console.log('▶ 작업 슬롯 해금 (총 레벨 = 모든 스킬 레벨 합, 시작값 14)');
+console.log('▶ 작업 슬롯 해금 (총 레벨 = 모든 스킬 레벨 합, 시작값 17)');
 console.log('  (그리디 = 매번 가장 싼 레벨을 올리는 이론상 최단 경로. 실플레이는 이보다 느림)');
 for (const unlock of SLOT_UNLOCKS) {
   console.log(
     `  슬롯 ${unlock.slots} (총 Lv ${unlock.totalLevel}): 그리디 최단 약 ${fmt(greedyTotalLevelTime(unlock.totalLevel))}`,
   );
+}
+
+// ━━━ 아이템 → 소비처 매트릭스 (Phase 3 DoD: 빈 칸 = 실패) ━━━
+console.log('\n▶ 아이템 → 소비처 매트릭스 (소비처 없는 아이템 = 경제 순환 실패)');
+const consumers = new Map(); // itemId → string[]
+const add = (itemId, text) => {
+  if (!consumers.has(itemId)) consumers.set(itemId, []);
+  consumers.get(itemId).push(text);
+};
+for (const action of ACTIONS.values()) {
+  for (const input of action.inputs ?? []) add(input.itemId, `제작: ${action.name}`);
+}
+for (const item of ITEMS.values()) {
+  if (item.equip) add(item.id, `장비 (${item.equip.slot === 'weapon' ? '무기' : '방어구'})`);
+  if (item.food) add(item.id, `음식 (회복 ${item.food.heal})`);
+  if (item.potion) add(item.id, '물약 (버프)');
+}
+let missingCount = 0;
+for (const item of ITEMS.values()) {
+  const uses = consumers.get(item.id);
+  if (!uses) {
+    missingCount++;
+    console.log(`  ❌ ${item.name}: 소비처 없음!`);
+  } else {
+    console.log(`  ${item.name}: ${[...new Set(uses)].join(' / ')}`);
+  }
+}
+console.log(missingCount === 0 ? '  ✅ 모든 아이템에 소비처가 있습니다' : `  ❌ ${missingCount}개 아이템 소비처 없음`);
+
+// ━━━ 골드 수입 vs 도구 업그레이드 가격 ━━━
+console.log('\n▶ 시간당 골드 수입 vs 업그레이드 가격 (산출물 전량 판매 가정)');
+function goldPerHour(action) {
+  let gold = 0;
+  for (const output of action.outputs) {
+    gold += (ITEMS.get(output.itemId)?.sellPrice ?? 0) * output.qty;
+  }
+  // 전투 액션은 전리품 기대값 (사이클 시간은 스탯 의존이라 제외)
+  return (gold * 3_600_000) / action.durationMs;
+}
+for (const upgrade of UPGRADES) {
+  const skillName = getSkill(upgrade.skillId).name;
+  console.log(`  ${upgrade.icon} ${skillName} ${upgrade.name}`);
+  const actions = actionsForSkill(upgrade.skillId).filter((a) => !a.combat);
+  for (const [i, stage] of upgrade.stages.entries()) {
+    // 해당 단계쯤 도달했을 액션 가정: 단계 인덱스에 비례해 상위 액션 사용
+    const tierIndex = Math.min(actions.length - 1, i + 1);
+    const action = actions[tierIndex];
+    const rate = goldPerHour(action);
+    const hours = stage.price / rate;
+    console.log(
+      `    ${i + 1}단계 ${stage.name} (🪙 ${stage.price.toLocaleString()}): ` +
+      `${action.name} 판매 기준 시간당 🪙 ${Math.round(rate).toLocaleString()} → 약 ${fmt(hours * 3_600_000)}`,
+    );
+  }
 }

@@ -71,6 +71,21 @@ body {
   cursor: default;
 }
 
+.topbar-buffs {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.buff-chip {
+  font-size: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: 10px;
+  padding: 2px 8px;
+  color: var(--accent);
+  cursor: default;
+}
+
 .topbar-slots-hint {
   font-size: 12px;
   color: var(--accent-dim);
@@ -281,6 +296,15 @@ body {
 .input-chip.short {
   color: var(--red);
   border-color: var(--red);
+}
+
+.output-chip-rare {
+  color: var(--accent-dim);
+  border-style: dashed;
+}
+
+.action-boosted {
+  color: var(--green);
 }
 
 .action-progress {

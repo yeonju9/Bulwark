@@ -1,8 +1,10 @@
 import { getItem, ITEMS } from './data/items';
 import { ACTIONS } from './data/skills';
+import { getUpgrade } from './data/upgrades';
+import { activelySupplied } from './simulate';
 import { unlockedActionSlots } from './slots';
 import { levelFromXp } from './xp';
-import type { ActionId, EquipSlot, GameState, ItemId } from './types';
+import type { ActionId, EquipSlot, GameState, ItemId, SkillId } from './types';
 
 export type CommandError =
   | 'unknown-action'
@@ -11,7 +13,11 @@ export type CommandError =
   | 'unknown-item'
   | 'not-enough-items'
   | 'not-equippable'
-  | 'not-food';
+  | 'not-food'
+  | 'not-potion'
+  | 'unknown-upgrade'
+  | 'max-stage'
+  | 'not-enough-gold';
 
 export interface CommandResult {
   state: GameState;
@@ -37,14 +43,6 @@ export function startAction(state: GameState, actionId: ActionId): CommandResult
   const level = levelFromXp(state.skills[action.skillId].xp);
   if (level < action.levelRequired) return { state, error: 'level-too-low' };
 
-  if (action.inputs) {
-    for (const input of action.inputs) {
-      if ((state.inventory[input.itemId] ?? 0) < input.qty) {
-        return { state, error: 'missing-materials' };
-      }
-    }
-  }
-
   const next = structuredClone(state);
   const newAction = { skillId: action.skillId, actionId: action.id, progressMs: 0 };
 
@@ -56,6 +54,17 @@ export function startAction(state: GameState, actionId: ActionId): CommandResult
       next.activeActions.shift();
     }
     next.activeActions.push(newAction);
+  }
+
+  // 재료 검사는 교체/축출이 반영된 최종 슬롯 구성으로 한다 — 부족한 재료라도
+  // 함께 돌아갈 작업이 공급한다면(낚시→요리) 시작을 허용하고 simulate가 대기시킨다
+  for (const input of action.inputs ?? []) {
+    if (
+      (next.inventory[input.itemId] ?? 0) < input.qty &&
+      !activelySupplied(next, input.itemId, action.id)
+    ) {
+      return { state, error: 'missing-materials' };
+    }
   }
   return { state: next };
 }
@@ -108,6 +117,45 @@ export function setCombatFood(state: GameState, itemId: ItemId | null): CommandR
   }
   const next = structuredClone(state);
   next.combatFood = itemId;
+  return { state: next };
+}
+
+/**
+ * 물약 마시기. 같은 카테고리의 기존 버프는 교체된다 (동시 적용 카테고리별 1개).
+ * 호출 전에 simulate()로 정산된 상태를 넘기는 것이 전제 — now는 만료 시각 계산에 쓴다.
+ */
+export function drinkPotion(state: GameState, itemId: ItemId, now: number): CommandResult {
+  const item = ITEMS.get(itemId);
+  if (!item) return { state, error: 'unknown-item' };
+  if (!item.potion) return { state, error: 'not-potion' };
+  if ((state.inventory[itemId] ?? 0) < 1) return { state, error: 'not-enough-items' };
+
+  const next = structuredClone(state);
+  const left = next.inventory[itemId]! - 1;
+  if (left > 0) next.inventory[itemId] = left;
+  else delete next.inventory[itemId];
+
+  next.buffs = next.buffs.filter((b) => b.category !== item.potion!.category);
+  next.buffs.push({
+    itemId,
+    category: item.potion.category,
+    expiresAtMs: now + item.potion.durationMs,
+  });
+  return { state: next };
+}
+
+/** 상점: 도구 업그레이드 구매 (골드 차감, 단계 +1) */
+export function buyUpgrade(state: GameState, skillId: SkillId): CommandResult {
+  const upgrade = getUpgrade(skillId);
+  if (!upgrade) return { state, error: 'unknown-upgrade' };
+  const stage = state.upgrades[skillId] ?? 0;
+  if (stage >= upgrade.stages.length) return { state, error: 'max-stage' };
+  const price = upgrade.stages[stage].price;
+  if (state.gold < price) return { state, error: 'not-enough-gold' };
+
+  const next = structuredClone(state);
+  next.gold -= price;
+  next.upgrades[skillId] = stage + 1;
   return { state: next };
 }
 

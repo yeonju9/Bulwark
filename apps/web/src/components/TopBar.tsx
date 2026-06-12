@@ -1,12 +1,20 @@
 import {
   computeStats,
   getAction,
+  getItem,
   nextSlotUnlock,
   totalLevel,
   unlockedActionSlots,
 } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+
+function remainingText(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}초`;
+}
 
 export function TopBar() {
   const gold = useGame((s) => s.game.gold);
@@ -50,6 +58,22 @@ export function TopBar() {
           {next ? ` · 총 Lv ${totalLevel(game)}/${next.totalLevel}` : ` · 총 Lv ${totalLevel(game)}`}
         </span>
       </div>
+      {game.buffs.length > 0 && (
+        <div className="topbar-buffs">
+          {game.buffs.map((buff) => {
+            const item = getItem(buff.itemId);
+            return (
+              <span
+                key={buff.category}
+                className="buff-chip"
+                title={`${item.name} — 남은 시간 ${remainingText(buff.expiresAtMs - game.lastTickAt)}`}
+              >
+                {item.icon} {remainingText(buff.expiresAtMs - game.lastTickAt)}
+              </span>
+            );
+          })}
+        </div>
+      )}
       <div className="topbar-hp" title="HP — 사냥 중이 아닐 때 자연 회복됩니다">
         ❤️ {Math.floor(game.hp)}/{stats.maxHp}
       </div>

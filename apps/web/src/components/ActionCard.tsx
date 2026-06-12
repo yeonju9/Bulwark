@@ -1,20 +1,26 @@
-import { getItem, type ActionDef } from '@idle-rpg/core';
+import { activelySupplied, effectiveCycleMs, getItem, type ActionDef } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
 
 export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLevel: number }) {
-  const inventory = useGame((s) => s.game.inventory);
-  const activeActions = useGame((s) => s.game.activeActions);
+  const game = useGame((s) => s.game);
   const start = useGame((s) => s.start);
   const stop = useGame((s) => s.stop);
 
+  const { inventory, activeActions } = game;
   const locked = skillLevel < action.levelRequired;
   const activeEntry = activeActions.find((a) => a.actionId === action.id);
   const isActive = activeEntry !== undefined;
-  const progressPct = activeEntry ? (activeEntry.progressMs / action.durationMs) * 100 : 0;
+  // 버프·도구 업그레이드가 반영된 실제 사이클 시간 기준으로 표시
+  const cycleMs = effectiveCycleMs(action, game);
+  const boosted = cycleMs < action.durationMs;
+  const progressPct = activeEntry ? (activeEntry.progressMs / cycleMs) * 100 : 0;
 
+  // 재료가 부족해도 활성 작업이 공급 중이면 시작 가능 (낚시→요리 조합)
   const missingMaterial = (action.inputs ?? []).some(
-    (input) => (inventory[input.itemId] ?? 0) < input.qty,
+    (input) =>
+      (inventory[input.itemId] ?? 0) < input.qty &&
+      !activelySupplied(game, input.itemId, action.id),
   );
 
   if (locked) {
@@ -31,12 +37,12 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
     <div className={`action-card ${isActive ? 'active' : ''}`}>
       <div className="action-icon">{action.icon}</div>
       <div className="action-name">{action.name}</div>
-      <div className="action-meta">
-        {(action.durationMs / 1000).toFixed(1)}초 · {action.xp} XP
+      <div className={`action-meta ${boosted ? 'action-boosted' : ''}`}>
+        {(cycleMs / 1000).toFixed(1)}초{boosted && ' ⚡'} · {action.xp} XP
       </div>
       <div className="action-meta action-rate">
-        시간당 {formatNumber(Math.round((3_600_000 / action.durationMs) * action.outputs[0].qty))}개
-        · {formatNumber(Math.round((3_600_000 / action.durationMs) * action.xp))} XP
+        시간당 {formatNumber(Math.round((3_600_000 / cycleMs) * action.outputs[0].qty))}개
+        · {formatNumber(Math.round((3_600_000 / cycleMs) * action.xp))} XP
       </div>
 
       {action.inputs && (
@@ -57,6 +63,16 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
         {action.outputs.map((output) => (
           <span key={output.itemId} className="output-chip">
             {getItem(output.itemId).icon} {getItem(output.itemId).name} ×{output.qty}
+          </span>
+        ))}
+        {action.byproducts?.map((entry) => (
+          <span
+            key={entry.itemId}
+            className="output-chip output-chip-rare"
+            title={`${Math.round(entry.chance * 100)}% 확률로 추가 획득`}
+          >
+            {getItem(entry.itemId).icon} {getItem(entry.itemId).name}{' '}
+            {Math.round(entry.chance * 100)}%
           </span>
         ))}
       </div>

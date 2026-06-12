@@ -44,6 +44,24 @@ const monsterList: MonsterDef[] = [
     ],
   },
   {
+    id: 'troll', name: '트롤', icon: '🧌', levelRequired: 38,
+    hp: 260, attack: 34, defense: 16, attackIntervalMs: 2800, xp: 130,
+    lootTable: [
+      { itemId: 'magic_stone', qty: 1, chance: 0.5 },
+      { itemId: 'leather', qty: 2, chance: 0.6 },
+      { itemId: 'dried_meat', qty: 1, chance: 0.3 },
+    ],
+  },
+  {
+    id: 'wyvern', name: '와이번', icon: '🐉', levelRequired: 48,
+    hp: 400, attack: 46, defense: 22, attackIntervalMs: 3000, xp: 200,
+    lootTable: [
+      { itemId: 'wyvern_scale', qty: 1, chance: 0.5 },
+      { itemId: 'magic_stone', qty: 1, chance: 0.6 },
+      { itemId: 'leather', qty: 3, chance: 0.4 },
+    ],
+  },
+  {
     id: 'goblin_chief', name: '고블린 족장', icon: '👑', levelRequired: 15,
     hp: 250, attack: 22, defense: 10, attackIntervalMs: 2400, xp: 150,
     lootTable: [],

@@ -1,10 +1,14 @@
 import {
   actionsForSkill,
   attemptDungeon,
+  buyUpgrade,
   createInitialState,
+  drinkPotion,
   equipItem,
   getAction,
+  getItem,
   getSkill,
+  getUpgrade,
   sellItem,
   setCombatFood,
   simulate,
@@ -28,6 +32,7 @@ import { clearSave, loadSave, persistSave } from './save';
 export type Panel =
   | SkillId
   | 'inventory'
+  | 'shop'
   | 'settings'
   | 'character'
   | 'hunt'
@@ -53,6 +58,8 @@ interface GameStore {
   equip(itemId: ItemId): void;
   unequip(slot: EquipSlot): void;
   setFood(itemId: ItemId | null): void;
+  drink(itemId: ItemId): void;
+  buy(skillId: SkillId): void;
   enterDungeon(dungeonId: DungeonId): void;
   dismissDungeonResult(): void;
   dismissOffline(): void;
@@ -165,6 +172,30 @@ export const useGame = create<GameStore>((set, get) => ({
     const settled = simulate(get().game, Date.now()).state;
     const { state, error } = setCombatFood(settled, itemId);
     if (!error) set({ game: state });
+  },
+
+  drink: (itemId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = drinkPotion(settled, itemId, Date.now());
+    if (error) return;
+    set({ game: state });
+    const item = getItem(itemId);
+    const minutes = Math.round(item.potion!.durationMs / 60_000);
+    get().pushToast(`${item.icon} ${item.name} 효과 발동! (${minutes}분)`);
+  },
+
+  buy: (skillId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = buyUpgrade(settled, skillId);
+    if (error === 'not-enough-gold') {
+      get().pushToast('❌ 골드가 부족합니다');
+      return;
+    }
+    if (error) return;
+    const stage = state.upgrades[skillId]!;
+    const upgrade = getUpgrade(skillId)!;
+    set({ game: state });
+    get().pushToast(`${upgrade.icon} ${upgrade.stages[stage - 1].name} 구매! 채집 속도 상승`);
   },
 
   enterDungeon: (dungeonId) => {

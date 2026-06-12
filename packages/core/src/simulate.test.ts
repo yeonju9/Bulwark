@@ -89,22 +89,22 @@ describe('simulate — 오프라인 정산', () => {
 });
 
 describe('작업 슬롯', () => {
-  // 벌목 28 → 총 레벨 28+1+1+1+10 = 41 ≥ 40 → 2슬롯
-  const twoSlotSkills = skillsWith({ woodcutting: { xp: xpForLevel(28) } });
+  // 벌목 30 → 총 레벨 30+1×5+10 = 45 ≥ 45 → 2슬롯
+  const twoSlotSkills = skillsWith({ woodcutting: { xp: xpForLevel(30) } });
 
-  it('1슬롯으로 시작하고 총 레벨 40/100에서 확장된다', () => {
+  it('1슬롯으로 시작하고 총 레벨 45/110에서 확장된다', () => {
     const fresh = stateWith();
-    expect(totalLevel(fresh)).toBe(14); // 채집·제작 1×3 + 공격 1 + 체력 10
+    expect(totalLevel(fresh)).toBe(17); // 비전투 1×6 + 공격 1 + 체력 10
     expect(unlockedActionSlots(fresh)).toBe(1);
-    expect(nextSlotUnlock(fresh)).toEqual({ slots: 2, totalLevel: 40 });
+    expect(nextSlotUnlock(fresh)).toEqual({ slots: 2, totalLevel: 45 });
 
     const mid = stateWith({ skills: twoSlotSkills });
     expect(unlockedActionSlots(mid)).toBe(2);
 
     const high = stateWith({
-      skills: skillsWith({ woodcutting: { xp: xpForLevel(60) }, mining: { xp: xpForLevel(28) } }),
+      skills: skillsWith({ woodcutting: { xp: xpForLevel(65) }, mining: { xp: xpForLevel(30) } }),
     });
-    expect(totalLevel(high)).toBe(100);
+    expect(totalLevel(high)).toBe(110);
     expect(unlockedActionSlots(high)).toBe(3);
     expect(nextSlotUnlock(high)).toBeNull();
   });

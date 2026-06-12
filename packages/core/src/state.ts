@@ -1,7 +1,7 @@
 import { xpForLevel } from './xp';
 import type { ActiveAction, GameState } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** 체력 스킬 시작 레벨 (최대 HP = 10×레벨 → 시작 100) */
 export const STARTING_HITPOINTS_LEVEL = 10;
@@ -18,6 +18,9 @@ export function createInitialState(now: number): GameState {
       smithing: { xp: 0 },
       attack: { xp: 0 },
       hitpoints: { xp: xpForLevel(STARTING_HITPOINTS_LEVEL) },
+      fishing: { xp: 0 },
+      cooking: { xp: 0 },
+      alchemy: { xp: 0 },
     },
     inventory: {},
     activeActions: [],
@@ -26,6 +29,9 @@ export function createInitialState(now: number): GameState {
     combatFood: null,
     monsterKills: {},
     dungeonCooldowns: {},
+    buffs: [],
+    upgrades: {},
+    actionCycles: {},
   };
 }
 
@@ -65,6 +71,24 @@ export function migrateSave(raw: unknown): GameState | null {
       combatFood: null,
       monsterKills: {},
       dungeonCooldowns: {},
+    };
+  }
+
+  // v3 → v4: 스킬 확장 — 낚시/요리/연금술, 버프, 도구 업그레이드, 부산물 카운터
+  if (data.version === 3) {
+    const skills = data.skills as Record<string, { xp: number }>;
+    data = {
+      ...data,
+      version: 4,
+      skills: {
+        ...skills,
+        fishing: { xp: 0 },
+        cooking: { xp: 0 },
+        alchemy: { xp: 0 },
+      },
+      buffs: [],
+      upgrades: {},
+      actionCycles: {},
     };
   }
 
