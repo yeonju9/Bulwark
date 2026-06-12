@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winterforge — 메인 화면 시안 10종 (클래식 RPG · 시작의 마을)</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@500;700&family=Gowun+Batang:wght@700&family=Song+Myung&family=Jua&family=Black+Han+Sans&family=Gugi&family=Gaegu:wght@400;700&family=Sunflower:wght@500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ───────── 테마 변수 (기본 = 시안 1) ───────── */
+body {
+  --bg: #e8dcc0; --panel: #f7eed8; --ink: #5b4326; --text: #4a3a22; --dim: #998566;
+  --accent: #b5651d; --gold: #f3e2b3; --chip: #ece0c2;
+  --grass1: #a8c97a; --grass2: #8db35e;
+  --cell: #fdf6e3; --radius: 10px; --bw: 3px;
+  --shadow: 3px 3px 0 rgba(91,67,38,.3);
+  --font-d: 'Noto Serif KR', serif; --font-b: 'Noto Sans KR', sans-serif;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-b); font-size: 15px;
+}
+
+/* ───────── 시안 전환 바 ───────── */
+.switcher { position: sticky; top: 0; z-index: 50; background: #1d2430; color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: 'Noto Sans KR', sans-serif; }
+.switcher b { font-size: 13px; margin-right: 4px; }
+.sw-btn { font-size: 12px; font-weight: 700; color: #cdd6e4; background: #303a4c; border: 2px solid #4a5870; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.sw-btn.on { background: #ff8a3d; color: #fff; border-color: #fff; }
+.sw-desc { width: 100%; font-size: 12px; color: #9fb0c8; }
+
+/* ───────── 공통 레이아웃 ───────── */
+.app { display: flex; flex-direction: column; height: calc(100vh - 64px); min-height: 660px; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; background: var(--panel); border-bottom: var(--bw) solid var(--ink); }
+.topbar-title { font-family: var(--font-d); font-size: 20px; color: var(--text); }
+.topbar-active { font-size: 13.5px; color: var(--dim); font-weight: 600; }
+.topbar-spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 8px; background: var(--chip); color: var(--text); border: var(--bw) solid var(--ink); border-radius: 999px; padding: 3px 14px; font-weight: 700; box-shadow: var(--shadow); }
+.pill.gold { background: var(--gold); }
+.hpbar { width: 110px; height: 10px; background: rgba(255,255,255,.85); border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.hpbar i { display: block; height: 100%; width: 72%; background: #44b04a; }
+
+.layout { display: flex; flex: 1; min-height: 0; }
+.sidebar { width: 166px; background: var(--panel); border-right: var(--bw) solid var(--ink); padding: 12px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+.nav-label { font-size: 11px; font-weight: 700; color: var(--dim); margin: 8px 6px 2px; }
+.nav-btn { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 2px solid transparent; border-radius: calc(var(--radius) - 2px); font-size: 13.5px; font-weight: 600; color: var(--text); cursor: default; }
+.nav-btn.active { background: var(--chip); border-color: var(--ink); box-shadow: var(--shadow); }
+.nav-btn .lv { margin-left: auto; font-size: 11px; color: var(--dim); font-weight: 700; }
+
+main { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 14px 18px; gap: 12px; overflow-y: auto; }
+
+/* 웨이브 배너 */
+.wave-banner { display: flex; align-items: center; gap: 14px; background: var(--panel); border: var(--bw) solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 9px 16px; cursor: pointer; }
+.wave-banner .t { font-family: var(--font-d); font-size: 15.5px; color: var(--text); }
+.wave-banner .timer { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.wave-banner .spacer { flex: 1; }
+.tier-select { display: inline-flex; align-items: center; gap: 5px; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 6px 3px 12px; background: var(--chip); font-weight: 700; font-size: 12.5px; color: var(--text); }
+.tier-select .opt { padding: 2px 9px; border-radius: 999px; border: 2px solid transparent; }
+.tier-select .opt.sel { background: var(--accent); border-color: var(--ink); color: #fff; }
+.tier-select .opt.lock { color: var(--dim); }
+.mult { font-size: 12.5px; font-weight: 700; background: var(--gold); color: var(--text); border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; }
+
+/* 맵 — 잔디밭, 평화로운 시작의 마을 (전 시안 공통) */
+.map-frame { position: relative; flex: 1; min-height: 370px; background: linear-gradient(180deg, var(--grass1) 0%, var(--grass2) 100%); border: var(--bw) solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.map-frame::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(circle at 15% 22%, rgba(255,255,255,.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 14%, #ffd9e8 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 40% 80%, #fff3b0 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 68% 60%, rgba(255,255,255,.7) 0 2px, transparent 3px),
+    radial-gradient(circle at 28% 55%, #ffd9e8 0 2px, transparent 3px),
+    radial-gradient(circle at 90% 82%, #fff3b0 0 2px, transparent 3px);
+  background-size: 380px 380px; }
+.map-title { position: absolute; top: 12px; left: 16px; z-index: 2; font-family: var(--font-d); font-size: 16.5px; background: var(--panel); color: var(--text); border: 2.5px solid var(--ink); border-radius: 999px; padding: 3px 16px; box-shadow: var(--shadow); }
+.deco { position: absolute; font-size: 21px; user-select: none; opacity: .9; }
+
+.village { position: absolute; left: 50%; top: 53%; transform: translate(-50%,-50%); text-align: center; z-index: 2; }
+.village-grid { display: grid; grid-template-columns: repeat(3, 82px); grid-template-rows: repeat(3, 82px); gap: 8px; }
+.cell { background: var(--cell); color: var(--text); border: var(--bw) solid var(--ink); border-radius: calc(var(--radius) - 2px); box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+.cell:hover { filter: brightness(1.05); }
+.cell .bicon { font-size: 25px; line-height: 1; }
+.cell .bname { font-size: 11px; font-weight: 700; }
+.cell.empty { opacity: .82; border-style: dashed; color: var(--dim); }
+.cell.empty .bicon { font-size: 19px; }
+.cell.broken .bname { color: #e0463c; }
+.cell.selected, .dungeon.selected .d-card { outline: 3px solid var(--accent); outline-offset: 2px; }
+.village-caption { margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--text); background: var(--panel); display: inline-block; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 12px; }
+
+.dungeon { position: absolute; width: 116px; text-align: center; cursor: pointer; z-index: 2; }
+.dungeon .d-icon { font-size: 32px; line-height: 1; filter: drop-shadow(2px 2px 0 rgba(0,0,0,.25)); }
+.dungeon .d-card { margin-top: 2px; background: var(--panel); color: var(--text); border: 2.5px solid var(--ink); border-radius: calc(var(--radius) - 2px); box-shadow: var(--shadow); padding: 4px 6px; font-size: 11.5px; font-weight: 700; }
+.dungeon .d-lv { color: var(--accent); }
+.badge { display: inline-block; font-size: 10px; border-radius: 999px; padding: 1px 7px; border: 2px solid var(--ink); margin-top: 2px; background: var(--chip); }
+.badge.first { background: var(--accent); color: #fff; }
+
+/* 상세 패널 */
+.detail { background: var(--panel); border: var(--bw) solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 18px; min-height: 132px; }
+.detail h3 { font-family: var(--font-d); font-size: 16.5px; margin-bottom: 7px; color: var(--text); }
+.detail .dim { color: var(--dim); font-size: 13px; }
+.detail-block { display: none; }
+.detail-block.show { display: block; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0; align-items: center; font-size: 13px; }
+.chip { font-size: 12.5px; font-weight: 700; background: var(--chip); color: var(--text); border: 2px solid var(--ink); border-radius: 999px; padding: 3px 11px; }
+.chip.cost { background: var(--gold); }
+.chip.big { background: var(--accent); color: #fff; }
+.chip.bad { background: rgba(242,92,84,.28); }
+.btn { display: inline-block; font-family: var(--font-d); font-size: 14px; color: #fff; background: var(--accent); border: 2.5px solid var(--ink); border-radius: calc(var(--radius) - 2px); padding: 6px 18px; box-shadow: var(--shadow); cursor: pointer; margin-top: 6px; }
+.build-options { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.build-card { border: 2.5px solid var(--ink); border-radius: var(--radius); padding: 9px 13px; background: var(--cell); box-shadow: var(--shadow); width: 228px; color: var(--text); }
+.build-card .bt { font-weight: 700; margin-bottom: 3px; }
+.stat-table { font-size: 13px; margin-top: 6px; border-collapse: collapse; color: var(--text); }
+.stat-table td { padding: 2px 14px 2px 0; }
+.stat-table .sum td { border-top: 2px solid var(--ink); font-weight: 700; padding-top: 4px; }
+
+/* ───────── 시안별 테마 ───────── */
+
+/* 1. 양피지 모험서 — 기본값 그대로 */
+
+/* 2. 클래식 JRPG 블루 */
+body.t2 { --bg: #0b0d22; --panel: linear-gradient(180deg,#2335a0 0%,#111e62 100%); --ink: #e9ecff; --text: #ffffff; --dim: #9fb0e8;
+  --accent: #e8533f; --gold: #3a4cc0; --chip: rgba(255,255,255,.14); --grass1: #79c14e; --grass2: #569d38;
+  --cell: #182566; --radius: 9px; --bw: 3px; --shadow: 0 3px 0 rgba(0,0,0,.45);
+  --font-d: 'Noto Sans KR', sans-serif; }
+body.t2 .topbar, body.t2 .sidebar, body.t2 .wave-banner, body.t2 .detail, body.t2 .map-title, body.t2 .d-card, body.t2 .build-card { box-shadow: inset 0 0 0 2px #4a5fc9, 0 3px 0 rgba(0,0,0,.45); }
+body.t2 .topbar-title { letter-spacing: 1px; }
+
+/* 3. 레트로 픽셀 */
+body.t3 { --bg: #131318; --panel: #1e1e2e; --ink: #f2f2f2; --text: #f2f2f2; --dim: #8e8ea8;
+  --accent: #e83b3b; --gold: #6b5616; --chip: #2e2e44; --grass1: #45a845; --grass2: #2f8a2f;
+  --cell: #15152a; --radius: 0px; --bw: 4px; --shadow: 4px 4px 0 #000;
+  --font-d: 'Press Start 2P', 'Noto Sans KR', sans-serif; }
+body.t3 .topbar-title { font-size: 13px; }
+body.t3 .detail h3, body.t3 .wave-banner .t, body.t3 .map-title { font-size: 12.5px; }
+body.t3 .btn { font-size: 11px; }
+body.t3 .pill, body.t3 .tier-select, body.t3 .mult, body.t3 .chip, body.t3 .badge, body.t3 .map-title, body.t3 .village-caption { border-radius: 0; }
+body.t3 .map-frame::before { background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,.5) 0 2px, transparent 2px), radial-gradient(circle at 70% 70%, rgba(255,255,255,.5) 0 2px, transparent 2px); background-size: 60px 60px; }
+
+/* 4. 떡갈나무 여관 */
+body.t4 { --bg: repeating-linear-gradient(90deg,#a9743f 0 64px,#9c6836 64px 66px,#b07a44 66px 130px,#9c6836 130px 132px); --panel: #f4e4c4; --ink: #5a3413; --text: #4d2f12; --dim: #97774f;
+  --accent: #a23c20; --gold: #f0d9a0; --chip: #e8d4ab; --grass1: #9cc46e; --grass2: #7fab52;
+  --cell: #fbf2dc; --radius: 12px; --bw: 3px; --shadow: 3px 4px 0 rgba(58,33,10,.35);
+  --font-d: 'Sunflower', sans-serif; }
+
+/* 5. 회색 돌성 */
+body.t5 { --bg: #b6bdc6; --panel: #e9ebef; --ink: #39434f; --text: #2f3944; --dim: #7f8b99;
+  --accent: #3f6db4; --gold: #ecd27e; --chip: #d4dae2; --grass1: #94b76e; --grass2: #74a04f;
+  --cell: #f6f7f9; --radius: 8px; --bw: 3px; --shadow: 3px 3px 0 rgba(45,55,68,.35);
+  --font-d: 'Black Han Sans', sans-serif; }
+body.t5 .topbar { background: linear-gradient(180deg,#f0f2f5,#dde1e7); }
+
+/* 6. 다크 판타지 */
+body.t6 { --bg: #16131b; --panel: #241f2c; --ink: #c9a85c; --text: #eae2d2; --dim: #95897a;
+  --accent: #a32638; --gold: #4a3c1c; --chip: #322b3d; --grass1: #5e8c48; --grass2: #47703a;
+  --cell: #2b2536; --radius: 7px; --bw: 2.5px; --shadow: 0 4px 10px rgba(0,0,0,.5);
+  --font-d: 'Song Myung', serif; }
+
+/* 7. 동화책 수채 */
+body.t7 { --bg: #eaf6ff; --panel: #fffdf6; --ink: #8a7aa0; --text: #5e5470; --dim: #a99cc0;
+  --accent: #7fbf7f; --gold: #ffe9b8; --chip: #f0e6fb; --grass1: #bce29e; --grass2: #a0d381;
+  --cell: #ffffff; --radius: 18px; --bw: 2.5px; --shadow: 0 4px 12px rgba(138,122,160,.25);
+  --font-d: 'Gaegu', cursive; }
+body.t7 .detail h3, body.t7 .wave-banner .t, body.t7 .map-title, body.t7 .topbar-title { font-size: 19px; }
+body.t7 .btn { font-size: 16px; }
+
+/* 8. 초원 목가 */
+body.t8 { --bg: #f3f9e8; --panel: #ffffff; --ink: #4c6b3c; --text: #3d5530; --dim: #8aa477;
+  --accent: #e0883c; --gold: #ffe9a8; --chip: #e6f2d8; --grass1: #a2d56e; --grass2: #7fbd4d;
+  --cell: #fbfff4; --radius: 14px; --bw: 3px; --shadow: 3px 3px 0 rgba(76,107,60,.4);
+  --font-d: 'Jua', sans-serif; }
+
+/* 9. 황금 왕국 */
+body.t9 { --bg: #f3eddd; --panel: #fffaf0; --ink: #8a6d1f; --text: #5c4a16; --dim: #ab9560;
+  --accent: #9e1b32; --gold: #f0d489; --chip: #f4ead0; --grass1: #a6c878; --grass2: #8ab35a;
+  --cell: #fffdf6; --radius: 8px; --bw: 4px; --shadow: 2px 3px 0 rgba(138,109,31,.3);
+  --font-d: 'Gowun Batang', serif; }
+body.t9 .topbar, body.t9 .detail, body.t9 .wave-banner, body.t9 .map-frame, body.t9 .build-card { border-style: double; border-width: 5px; }
+
+/* 10. 고대 유적 이끼 */
+body.t10 { --bg: #243530; --panel: #31463e; --ink: #9fd0b5; --text: #ddeee3; --dim: #8aa896;
+  --accent: #d8a04a; --gold: #4d5e3a; --chip: #3c544a; --grass1: #6da568; --grass2: #558a52;
+  --cell: #3a544a; --radius: 6px; --bw: 3px; --shadow: 0 4px 0 rgba(0,0,0,.35);
+  --font-d: 'Gugi', sans-serif; }
+</style>
+</head>
+<body class="t1">
+
+<div class="switcher">
+  <b>시안 선택 →</b>
+  <span class="sw-btn on" onclick="setTheme(1,this)">1 양피지 모험서</span>
+  <span class="sw-btn" onclick="setTheme(2,this)">2 클래식 JRPG 블루</span>
+  <span class="sw-btn" onclick="setTheme(3,this)">3 레트로 픽셀</span>
+  <span class="sw-btn" onclick="setTheme(4,this)">4 떡갈나무 여관</span>
+  <span class="sw-btn" onclick="setTheme(5,this)">5 회색 돌성</span>
+  <span class="sw-btn" onclick="setTheme(6,this)">6 다크 판타지</span>
+  <span class="sw-btn" onclick="setTheme(7,this)">7 동화책 수채</span>
+  <span class="sw-btn" onclick="setTheme(8,this)">8 초원 목가</span>
+  <span class="sw-btn" onclick="setTheme(9,this)">9 황금 왕국</span>
+  <span class="sw-btn" onclick="setTheme(10,this)">10 고대 유적</span>
+  <span class="sw-desc" id="sw-desc">고서·양피지 질감과 갈색 잉크 — 모험 일지를 펼친 듯한 전통 판타지 RPG 분위기</span>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <span class="topbar-title">⚒️ Winterforge</span>
+    <span class="topbar-active">⛏️ 미스릴 채광 · 🎣 연어 낚시 (슬롯 2/3)</span>
+    <span class="topbar-spacer"></span>
+    <span class="pill">🏰 마을 <span class="hpbar"><i></i></span> 218/302</span>
+    <span class="pill gold">💰 1,250</span>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-label">월드</div>
+      <div class="nav-btn active">🗺️ 맵</div>
+      <div class="nav-btn">📖 도감</div>
+      <div class="nav-label">스킬</div>
+      <div class="nav-btn">🪓 벌목 <span class="lv">Lv 24</span></div>
+      <div class="nav-btn">⛏️ 채광 <span class="lv">Lv 21</span></div>
+      <div class="nav-btn">🎣 낚시 <span class="lv">Lv 18</span></div>
+      <div class="nav-btn">🔨 제련 <span class="lv">Lv 19</span></div>
+      <div class="nav-btn">🍳 요리 <span class="lv">Lv 15</span></div>
+      <div class="nav-btn">⚗️ 연금술 <span class="lv">Lv 9</span></div>
+      <div class="nav-btn">⚔️ 공격 <span class="lv">Lv 12</span></div>
+      <div class="nav-btn">❤️ 체력 <span class="lv">Lv 14</span></div>
+      <div class="nav-label">기타</div>
+      <div class="nav-btn">🎒 인벤토리</div>
+      <div class="nav-btn">🛒 상점</div>
+      <div class="nav-btn">⚙️ 설정</div>
+    </nav>
+
+    <main>
+      <div class="wave-banner" onclick="select('wave', this)">
+        <span style="font-size:20px">🌊</span>
+        <span class="t">웨이브 #47 침공까지 <span class="timer">02:13</span></span>
+        <span class="spacer"></span>
+        <span class="tier-select">난이도
+          <span class="opt">티어 1</span>
+          <span class="opt sel">티어 2</span>
+          <span class="opt lock">🔒 티어 3</span>
+        </span>
+        <span class="mult">보상 ×1.5</span>
+      </div>
+
+      <div class="map-frame">
+        <div class="map-title">1단계 — 시작의 마을</div>
+        <span class="deco" style="top:20%;left:36%">🌳</span>
+        <span class="deco" style="top:66%;left:28%">🌳</span>
+        <span class="deco" style="top:28%;left:66%">🌳</span>
+        <span class="deco" style="top:78%;left:70%">🌼</span>
+        <span class="deco" style="top:42%;left:20%">🌼</span>
+        <span class="deco" style="top:16%;left:55%">🦋</span>
+        <span class="deco" style="top:82%;left:42%">🐑</span>
+        <span class="deco" style="top:58%;left:78%">🌿</span>
+
+        <div class="dungeon" style="top:13%;left:5%" onclick="select('dun5', this)">
+          <div class="d-icon">🕳️</div>
+          <div class="d-card">고블린 소굴 <span class="d-lv">Lv 5</span><br><span class="badge">✅ 클리어 ×3</span></div>
+        </div>
+        <div class="dungeon" style="top:13%;right:5%" onclick="select('dun12', this)">
+          <div class="d-icon">🕳️</div>
+          <div class="d-card">서리늑대 동굴 <span class="d-lv">Lv 12</span><br><span class="badge first">★ 최초 보상!</span></div>
+        </div>
+        <div class="dungeon" style="bottom:7%;left:5%" onclick="select('dun20', this)">
+          <div class="d-icon">🕳️</div>
+          <div class="d-card">트롤 협곡 <span class="d-lv">Lv 20</span><br><span class="badge first">★ 최초 보상!</span></div>
+        </div>
+        <div class="dungeon" style="bottom:7%;right:5%" onclick="select('dun30', this)">
+          <div class="d-icon">⛰️</div>
+          <div class="d-card">와이번 둥지 <span class="d-lv">Lv 30</span><br><span class="badge first">★ 최초 보상!</span></div>
+        </div>
+
+        <div class="village">
+          <div class="village-grid">
+            <div class="cell empty" onclick="select('empty', this)"><span class="bicon">➕</span><span class="bname">빈 터</span></div>
+            <div class="cell" onclick="select('wall', this)"><span class="bicon">🧱</span><span class="bname">성벽</span></div>
+            <div class="cell empty" onclick="select('empty', this)"><span class="bicon">➕</span><span class="bname">빈 터</span></div>
+            <div class="cell" onclick="select('barracks', this)"><span class="bicon">⚔️</span><span class="bname">병영</span></div>
+            <div class="cell" onclick="select('hq', this)"><span class="bicon">🏛️</span><span class="bname">본부</span></div>
+            <div class="cell empty" onclick="select('empty', this)"><span class="bicon">➕</span><span class="bname">빈 터</span></div>
+            <div class="cell empty" onclick="select('empty', this)"><span class="bicon">➕</span><span class="bname">빈 터</span></div>
+            <div class="cell broken" onclick="select('wallBroken', this)"><span class="bicon">🧱</span><span class="bname">성벽 ⚠️파손</span></div>
+            <div class="cell empty" onclick="select('empty', this)"><span class="bicon">➕</span><span class="bname">빈 터</span></div>
+          </div>
+          <div class="village-caption">우리 마을 (3×3 · 1칸 1건물)</div>
+        </div>
+      </div>
+
+      <div class="detail">
+        <div class="detail-block show" id="d-default">
+          <h3>🗺️ 시작의 마을</h3>
+          <p class="dim">마을 칸·던전·웨이브 배너를 클릭하면 상세 정보가 표시됩니다. 상단에서 시안(1~10)을 전환해 보세요.</p>
+        </div>
+        <div class="detail-block" id="d-hq">
+          <h3>🏛️ 본부 — 마을 스탯</h3>
+          <table class="stat-table">
+            <tr><td>건물 합산 (주력)</td><td>HP 220</td><td>공격 11</td><td>방어 7</td></tr>
+            <tr><td>스킬 보조 (공격 Lv12 · 체력 Lv14)</td><td>HP +42</td><td>공격 +4</td><td>—</td></tr>
+            <tr><td>장비 보조 (미스릴 검 · 강철 갑옷)</td><td>HP +40</td><td>공격 +5</td><td>방어 +4</td></tr>
+            <tr class="sum"><td>마을 합계</td><td>HP 302</td><td>공격 20</td><td>방어 11</td></tr>
+          </table>
+        </div>
+        <div class="detail-block" id="d-wall">
+          <h3>🧱 성벽</h3>
+          <div class="chips"><span class="chip">최대 HP +60</span><span class="chip">방어 +3</span></div>
+          <p class="dim">웨이브 패배 시 성벽이 가장 먼저 파손됩니다 (본부 제외 우선순위: 성벽 → 병영).</p>
+        </div>
+        <div class="detail-block" id="d-wallBroken">
+          <h3>🧱 성벽 — ⚠️ 파손됨</h3>
+          <div class="chips"><span class="chip bad">효과 정지: 최대 HP +60 · 방어 +3</span></div>
+          <div class="chips">수리 비용: <span class="chip cost">🪵 참나무 원목 ×20</span><span class="chip cost">💰 150</span></div>
+          <span class="btn">🔧 수리하기</span>
+        </div>
+        <div class="detail-block" id="d-barracks">
+          <h3>⚔️ 병영</h3>
+          <div class="chips"><span class="chip">공격력 +6</span></div>
+          <p class="dim">수비대의 반격이 강해져 웨이브를 더 빨리 처치합니다.</p>
+        </div>
+        <div class="detail-block" id="d-empty">
+          <h3>➕ 빈 터 — 건설</h3>
+          <div class="build-options">
+            <div class="build-card">
+              <div class="bt">🧱 성벽</div>
+              <div class="chips"><span class="chip">최대 HP +60</span><span class="chip">방어 +3</span></div>
+              <div class="chips"><span class="chip cost">🪵 원목 ×30</span><span class="chip cost">💰 200</span></div>
+              <span class="btn">건설</span>
+            </div>
+            <div class="build-card">
+              <div class="bt">⚔️ 병영</div>
+              <div class="chips"><span class="chip">공격력 +6</span></div>
+              <div class="chips"><span class="chip cost">🔩 철 주괴 ×10</span><span class="chip cost">💰 350</span></div>
+              <span class="btn">건설</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-block" id="d-dun5">
+          <h3>🕳️ 고블린 소굴 Lv 5 — 클리어 ×3</h3>
+          <p class="dim">등장: 고블린 ×3 + 고블린 족장(보스) · 원할 때 언제든 도전</p>
+          <div class="chips">반복 보상: <span class="chip">💰 80</span><span class="chip">미스릴 강화석 12%</span></div>
+          <span class="btn">⚔️ 입장</span>
+        </div>
+        <div class="detail-block" id="d-dun12">
+          <h3>🕳️ 서리늑대 동굴 Lv 12 — 미클리어</h3>
+          <p class="dim">등장: 서리늑대 ×4 + 서리늑대 우두머리(보스) · 던전 전용 몬스터</p>
+          <div class="chips">최초 클리어: <span class="chip big">💰 1,000</span><span class="chip big">희귀 재료 ×5</span><span class="chip big">🌊 티어 3 해금</span></div>
+          <span class="btn">⚔️ 입장</span>
+        </div>
+        <div class="detail-block" id="d-dun20">
+          <h3>🕳️ 트롤 협곡 Lv 20 — 미클리어</h3>
+          <div class="chips">최초 클리어: <span class="chip big">💰 3,000</span><span class="chip big">아다만타이트 강화석</span><span class="chip big">🌊 티어 4 해금</span></div>
+          <span class="btn">⚔️ 입장</span>
+        </div>
+        <div class="detail-block" id="d-dun30">
+          <h3>⛰️ 와이번 둥지 Lv 30 — 미클리어</h3>
+          <div class="chips">최초 클리어: <span class="chip big">💰 8,000</span><span class="chip big">오리할콘 강화석</span><span class="chip big">🌊 티어 5 해금</span></div>
+          <span class="btn">⚔️ 입장</span>
+        </div>
+        <div class="detail-block" id="d-wave">
+          <h3>🌊 웨이브 침공</h3>
+          <p class="dim">주기마다 자동 침공 · 슬롯 미차지 · 던전 최초 클리어로 티어 해금 · 해금 범위 내 난이도 선택 · 난이도∝보상 · 패배 시 건물 1개 파손 · 오프라인 보상 50%, 파손 최대 1회</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+var DESCS = {
+  1: '고서·양피지 질감과 갈색 잉크 — 모험 일지를 펼친 듯한 전통 판타지 RPG 분위기',
+  2: '짙은 남색 그라데이션 창 + 흰 테두리 — 고전 콘솔 JRPG 메뉴창 오마주',
+  3: '검은 배경 + 각진 모서리 + 픽셀 폰트 — 8비트 레트로 도트 게임 감성',
+  4: '나무 판자 벽에 걸린 양피지 게시판 — 모험가 길드 여관의 따뜻한 느낌',
+  5: '회색 석재와 로얄 블루 — 중세 성채의 묵직하고 단단한 분위기',
+  6: '암흑 배경에 금테·진홍 포인트 — 진중한 다크 판타지 (평화로운 잔디밭과 대비)',
+  7: '파스텔 수채 + 손글씨 폰트 — 동화책 속 평화로운 마을 그림',
+  8: '밝은 초록과 크림색 — 잔디밭 그 자체를 살린 목가적·평화 컨셉 (맵 분위기와 가장 일치)',
+  9: '아이보리 + 금장 이중 테두리 + 왕실 적색 — 왕국 연대기풍 클래식',
+  10: '이끼 낀 돌과 비취색 룬 — 고대 유적을 탐험하는 신비로운 분위기'
+};
+function setTheme(n, btn) {
+  document.body.className = 't' + n;
+  document.querySelectorAll('.sw-btn').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.getElementById('sw-desc').textContent = DESCS[n];
+}
+function select(id, el) {
+  document.querySelectorAll('.detail-block').forEach(function(b){ b.classList.remove('show'); });
+  var map = { wall:'d-wall', wallBroken:'d-wallBroken', hq:'d-hq', barracks:'d-barracks', empty:'d-empty',
+              dun5:'d-dun5', dun12:'d-dun12', dun20:'d-dun20', dun30:'d-dun30', wave:'d-wave' };
+  document.getElementById(map[id] || 'd-default').classList.add('show');
+  document.querySelectorAll('.cell, .dungeon').forEach(function(c){ c.classList.remove('selected'); });
+  if (el && el.classList && (el.classList.contains('cell') || el.classList.contains('dungeon'))) el.classList.add('selected');
+}
+</script>
+</body>
+</html>
