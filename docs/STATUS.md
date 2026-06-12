@@ -15,9 +15,11 @@
   작업이 활성이면 중단하지 않고 대기. 낚시+요리 동시 가동이 성립
 - 테스트 50개 통과. 상세 구현 내역·문서 대비 변경점:
   [phases/phase-3-skills-economy.md](phases/phase-3-skills-economy.md)의 "진행 기록"
-- **Phase 3 변경분은 아직 커밋 전** (Phase 2까지는 커밋됨)
+- Phase 3까지 커밋·push 완료 (원격: github.com/yeonju9/Winterforge)
 
 ## 다음 작업: Phase 3 플레이테스트 (사용자가 직접)
+
+> 전체 잔여 작업 목록: [TODO.md](TODO.md) · 플레이 체크리스트: [playtest-checklist.md](playtest-checklist.md)
 
 확인할 것 (DoD):
 1. 골드 사용처가 생겼다 — 상점 업그레이드를 실제로 사고 싶은가
@@ -43,25 +45,6 @@ node scripts/test-save.mjs wolf|goblin|orc   # Phase 2 전투 단계별
 3. `npm run dev` → http://localhost:5173
 4. 게임 세이브는 localStorage라 PC 간 이동 안 됨 → 설정 → 내보내기/가져오기 또는 test-save 사용
 5. 검증: `npm test` (50개), `npm run typecheck`, `npm run balance -w @idle-rpg/core`
-
-## 커밋 대기 중인 변경 (Phase 3 전체)
-
-커밋 메시지 제안:
-```
-feat: Phase 3 — 스킬 확장과 경제 순환 (낚시·요리·연금술, 물약, 상점)
-
-- 신규 스킬 3종: 낚시(물고기 6종) → 요리(음식 6종, 말린 고기 상위) → 사냥 음식
-- 연금술: 약초(벌목·채광 12% 부산물, 시드 난수) + 마정석/젤리 → 물약 6종
-- 버프 시스템: 카테고리별 1개, 곱연산만 개입, 만료 경계로 정산 구간 분할
-  → 오프라인 중 만료도 실시간과 완전 동일 (테스트 보장)
-- 재료 대기: 소비 작업은 공급 작업이 활성이면 재료 소진 시 중단 대신 대기
-  → 낚시+요리 동시 가동 성립 (재료 0개 시작도 허용)
-- 상점: 도끼/곡괭이/낚싯대 5단계 영구 업그레이드 (단계당 -5%, 골드 싱크)
-- 기존 스킬 확장: 벌목·채광·대장기술 아다만타이트/오리할콘 티어, 트롤·와이번
-- UI: 상점 패널, 물약 마시기, 상단 바 버프 표시, 버프 반영 사이클 표시
-- 세이브 v4 마이그레이션, 슬롯 해금 45/110, 테스트 32 → 50개
-- balance-report에 소비처 매트릭스·골드 곡선 추가, test-save economy 프리셋
-```
 
 ## 합의된 작업 방식 (다른 환경의 Claude를 위해)
 

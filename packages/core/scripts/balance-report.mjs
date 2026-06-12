@@ -5,8 +5,9 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const {
-  ACTIONS, ITEMS, SKILLS, SLOT_UNLOCKS, UPGRADES,
-  actionsForSkill, getSkill, xpForLevel, MAX_LEVEL,
+  ACTIONS, HUNT_ACTIONS, ITEMS, SKILLS, SLOT_UNLOCKS, UPGRADES,
+  actionsForSkill, getMonster, getSkill, xpForLevel, MAX_LEVEL,
+  damageTakenPerKill, hitpointsXpPerKill, timeToKillMs, HUNT_DOWNTIME_MS,
 } = require('../dist/index.js');
 
 function fmt(ms) {
@@ -152,6 +153,84 @@ for (const upgrade of UPGRADES) {
     console.log(
       `    ${i + 1}단계 ${stage.name} (🪙 ${stage.price.toLocaleString()}): ` +
       `${action.name} 판매 기준 시간당 🪙 ${Math.round(rate).toLocaleString()} → 약 ${fmt(hours * 3_600_000)}`,
+    );
+  }
+}
+
+// ━━━ 장비 티어 × 몬스터 손익표 (Phase 2 잔여: 전투 밸런스 패스) ━━━
+// 가정: 공격/체력 레벨은 해당 장비를 막 쓸 시점의 값 (test-save 프리셋과 동일선).
+// 음식은 그 시점에 요리 가능한 대표 음식 기준. 위험도는 HuntPanel 배지와 동일
+// (처치당 피해/최대HP ≥25% 위험, ≥8% 주의). "요리 초과"는 요리 1슬롯 생산량보다
+// 소모가 큰 조합 — 사냥을 쉬며 음식을 비축해야 유지된다는 뜻.
+console.log('\n▶ 장비 티어 × 몬스터 손익표 (음식 = 티어 대표 음식 기준 소모량)');
+
+const TIERS = [
+  { name: '맨손', weapon: null, armor: null, atk: 1, hp: 10, food: 'dried_meat' },
+  { name: '구리+가죽', weapon: 'copper_sword', armor: 'leather_armor', atk: 5, hp: 12, food: 'dried_meat' },
+  { name: '철', weapon: 'iron_sword', armor: 'iron_armor', atk: 12, hp: 15, food: 'cooked_herring' },
+  { name: '은+철갑', weapon: 'silver_sword', armor: 'iron_armor', atk: 20, hp: 22, food: 'cooked_salmon' },
+  { name: '미스릴', weapon: 'mithril_sword', armor: 'mithril_armor', atk: 32, hp: 32, food: 'cooked_tuna' },
+  { name: '아다만타이트', weapon: 'adamantite_sword', armor: 'adamantite_armor', atk: 42, hp: 40, food: 'cooked_swordfish' },
+  { name: '오리할콘', weapon: 'orichalcum_sword', armor: 'orichalcum_armor', atk: 52, hp: 50, food: 'cooked_shark' },
+];
+
+/** 해당 음식을 만드는 요리 액션의 시간당 생산량 (요리 1슬롯 자급 한계) */
+function cookRatePerHour(foodId) {
+  for (const action of ACTIONS.values()) {
+    if (action.outputs.some((o) => o.itemId === foodId)) return 3_600_000 / action.durationMs;
+  }
+  return Infinity; // 말린 고기 등 드랍 음식은 요리 생산 개념 없음
+}
+
+function lootGoldPerKill(monster) {
+  let gold = 0;
+  for (const entry of monster.lootTable) {
+    gold += (ITEMS.get(entry.itemId)?.sellPrice ?? 0) * entry.qty * entry.chance;
+  }
+  return gold;
+}
+
+for (const tier of TIERS) {
+  const weaponAtk = tier.weapon ? ITEMS.get(tier.weapon).equip.attack : 0;
+  const armorDef = tier.armor ? ITEMS.get(tier.armor).equip.defense : 0;
+  const stats = {
+    attackLevel: tier.atk,
+    hpLevel: tier.hp,
+    maxHp: tier.hp * 10,
+    attackPower: 1 + tier.atk + weaponAtk,
+    defense: armorDef,
+  };
+  const food = ITEMS.get(tier.food);
+  const cookRate = cookRatePerHour(tier.food);
+  console.log(
+    `  ◆ ${tier.name} (공격 Lv${tier.atk}, 체력 Lv${tier.hp}, 공격력 ${stats.attackPower}, ` +
+    `방어 ${stats.defense}, 음식: ${food.name} 회복 ${food.food.heal})`,
+  );
+
+  const rows = [];
+  for (const huntAction of HUNT_ACTIONS) {
+    const monster = getMonster(huntAction.combat.monsterId);
+    if (monster.levelRequired > tier.atk) continue; // 이 티어 시점엔 미해금
+    const cycleMs = timeToKillMs(stats, monster) + HUNT_DOWNTIME_MS;
+    const killsPerHour = 3_600_000 / cycleMs;
+    const dmg = damageTakenPerKill(stats, monster);
+    const xpPerHour = (monster.xp + hitpointsXpPerKill(dmg)) * killsPerHour;
+    const goldPerHour = lootGoldPerKill(monster) * killsPerHour;
+    const foodPerHour = (dmg * killsPerHour) / food.food.heal;
+    const dangerPct = (dmg / stats.maxHp) * 100;
+    const badge = dangerPct >= 25 ? '⛔위험' : dangerPct >= 8 ? '⚠️주의' : '✅안전';
+    rows.push({ monster, killsPerHour, xpPerHour, goldPerHour, foodPerHour, badge });
+  }
+  const bestXp = Math.max(...rows.map((r) => r.xpPerHour));
+  for (const r of rows) {
+    const marks =
+      (r.xpPerHour === bestXp ? ' ←최고XP' : '') +
+      (r.foodPerHour > cookRate ? ' (요리 초과)' : '');
+    console.log(
+      `    ${r.monster.name.padEnd(8, ' ')} ${String(Math.round(r.killsPerHour)).padStart(4)}마리/h` +
+      ` · XP ${String(Math.round(r.xpPerHour)).padStart(6)}/h` +
+      ` · 🪙 ${String(Math.round(r.goldPerHour)).padStart(5)}/h` +
+      ` · 음식 ${r.foodPerHour.toFixed(1).padStart(6)}/h · ${r.badge}${marks}`,
     );
   }
 }
