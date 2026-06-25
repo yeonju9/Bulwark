@@ -23,6 +23,7 @@
 
 ### 몬스터 (`data/monsters.ts`)
 `slime` · `boar` · `wolf` · `goblin` · `goblin_shaman` · `orc` …
+- 웨이브 **침공 애니메이션**(마을로 돌격하는 몬스터)과 상세 패널에 같은 파일이 쓰입니다.
 
 ### 아이템 (`data/items.ts`)
 `normal_log` · `oak_log` · `copper_bar` · `iron_bar` … (장비·재료·음식·물약 등)

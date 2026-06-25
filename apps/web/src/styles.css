@@ -1010,6 +1010,45 @@ body {
   100% { box-shadow: var(--shadow); transform: translateY(0); }
 }
 
+/* 침공 애니메이션 — 몬스터가 가장자리에서 마을로 돌격 */
+.map-screen .invasion-layer { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.map-screen .invader {
+  position: absolute; left: var(--sx); top: var(--sy);
+  font-size: 30px; line-height: 1; will-change: left, top, transform, opacity;
+  filter: drop-shadow(1px 2px 1px rgba(0,0,0,.4));
+  animation: invade 1.6s cubic-bezier(.5,0,.4,1) forwards;
+}
+.map-screen .invader .game-icon { width: 36px; height: 36px; }
+@keyframes invade {
+  0%   { left: var(--sx); top: var(--sy); opacity: 0; transform: translate(-50%,-50%) scale(.5); }
+  14%  { opacity: 1; }
+  50%  { left: var(--mx); top: var(--my); transform: translate(-50%,-50%) scale(1.18); }
+  62%  { transform: translate(-50%,-50%) scale(1.04) rotate(-5deg); }      /* 일격 */
+  100% { left: var(--sx); top: var(--sy); opacity: 0; transform: translate(-50%,-50%) scale(.7); } /* 격퇴되어 튕겨남 */
+}
+.map-screen .invader.breached {
+  filter: drop-shadow(0 0 7px #e0463c) saturate(1.35);
+  animation: invade-breach 1.6s cubic-bezier(.4,0,.5,1) forwards;
+}
+@keyframes invade-breach {
+  0%   { left: var(--sx); top: var(--sy); opacity: 0; transform: translate(-50%,-50%) scale(.5); }
+  14%  { opacity: 1; }
+  60%  { left: var(--mx); top: var(--my); transform: translate(-50%,-50%) scale(1.22); }
+  100% { left: 50%; top: 50%; opacity: 0; transform: translate(-50%,-50%) scale(1); }  /* 마을을 관통 */
+}
+/* 충돌 파동 (중앙) */
+.map-screen .invasion-impact {
+  position: absolute; left: 50%; top: 50%; z-index: 7; pointer-events: none;
+  width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0;
+  animation: invasion-impact 1.1s ease-out 0.55s forwards;
+}
+.map-screen .invasion-impact.breached { border-color: #e0463c; }
+@keyframes invasion-impact {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.3); }
+  40%  { opacity: .85; }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(2.6); }
+}
+
 .topbar-hp.shake { animation: hp-shake 0.5s ease; }
 /* 농성 펄스와 흔들림이 겹칠 때 둘 다 살린다(box-shadow 펄스 + transform 흔들림) */
 .topbar-hp.sieged.shake { animation: siege-pulse 1.2s ease-in-out infinite, hp-shake 0.5s ease; }

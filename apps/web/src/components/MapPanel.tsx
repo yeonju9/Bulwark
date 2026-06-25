@@ -19,12 +19,13 @@ import {
   type DungeonId,
   type EquipSlot,
   type ItemId,
+  type MonsterId,
 } from '@idle-rpg/core';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { formatNumber } from '../format';
 import { iconUrl } from '../icons';
 import { useGame } from '../store';
-import { useWavePulse } from '../useWavePulse';
+import { useWaveInvasion, useWavePulse, type Invasion } from '../useWavePulse';
 import { GameIcon } from './GameIcon';
 
 const SLOT_LABEL: Record<EquipSlot, string> = { weapon: '무기', armor: '방어구' };
@@ -173,6 +174,7 @@ export function MapPanel() {
 
   const [sel, setSel] = useState<Selection>({ kind: 'none' });
   const wavePulse = useWavePulse();
+  const invasion = useWaveInvasion();
 
   const v = game.village;
   const stats = computeVillageStats(game);
@@ -344,6 +346,9 @@ export function MapPanel() {
             </div>
           </div>
 
+          {/* 침공 애니메이션 — 웨이브 발동 시 몬스터가 마을로 돌격 */}
+          {invasion && <InvasionLayer invasion={invasion} monsters={tier.monsters} />}
+
           <div className="atmo">
             <div className="sun" />
             <div className="vignette" />
@@ -450,6 +455,33 @@ export function MapPanel() {
             })}
         </section>
       </div>
+    </div>
+  );
+}
+
+/** 침공 애니메이션 레이어 — 티어 몬스터들이 가장자리에서 마을 중앙으로 돌격(막히면 튕김/뚫리면 관통) */
+function InvasionLayer({ invasion, monsters }: { invasion: Invasion; monsters: readonly MonsterId[] }) {
+  // 각 몬스터를 여러 마리로 복제해 떼처럼 보이게 (최대 12)
+  const HORDE = 3;
+  const horde = monsters.flatMap((id) => Array<MonsterId>(HORDE).fill(id)).slice(0, 12);
+  return (
+    <div className="invasion-layer" key={invasion.key}>
+      {horde.map((id, i) => {
+        const ang = ((-90 + (360 / horde.length) * i) * Math.PI) / 180;
+        const style = {
+          '--sx': `${50 + Math.cos(ang) * 44}%`,
+          '--sy': `${50 + Math.sin(ang) * 44}%`,
+          '--mx': `${50 + Math.cos(ang) * 13}%`,
+          '--my': `${50 + Math.sin(ang) * 13}%`,
+          animationDelay: `${(i % 4) * 0.05}s`,
+        } as CSSProperties;
+        return (
+          <span key={i} className={`invader ${invasion.breached ? 'breached' : ''}`} style={style}>
+            <GameIcon id={id} emoji={getMonster(id).icon} size={36} />
+          </span>
+        );
+      })}
+      <span className={`invasion-impact ${invasion.breached ? 'breached' : ''}`} />
     </div>
   );
 }

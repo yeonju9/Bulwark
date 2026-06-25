@@ -23,3 +23,39 @@ export function useWavePulse(durationMs = 700): boolean {
 
   return pulse;
 }
+
+export interface Invasion {
+  /** 애니메이션 리마운트용 단조 증가 키 (매 침공마다 +1) */
+  key: number;
+  /** 이번 침공으로 마을이 뚫렸는가(농성 진입) — 돌파 연출로 분기 */
+  breached: boolean;
+}
+
+/**
+ * 웨이브가 발동할 때마다 잠깐 동안 활성화되는 침공 인스턴스. 몬스터 돌격 애니메이션 트리거.
+ * 막아낸 웨이브(wavesProcessed 증가)뿐 아니라 첫 웨이브에 바로 함락(농성 진입)되는 경우도
+ * 잡는다 — 후자는 wavesProcessed가 안 오르므로 underSiege 전환(false→true)으로 감지.
+ */
+export function useWaveInvasion(durationMs = 1700): Invasion | null {
+  const wavesProcessed = useGame((s) => s.game.village.wavesProcessed);
+  const underSiege = useGame((s) => s.game.village.underSiege);
+  const prevW = useRef(wavesProcessed);
+  const prevS = useRef(underSiege);
+  const seq = useRef(0);
+  const [invasion, setInvasion] = useState<Invasion | null>(null);
+
+  useEffect(() => {
+    const wonWave = wavesProcessed > prevW.current;
+    const justBreached = underSiege && !prevS.current;
+    prevW.current = wavesProcessed;
+    prevS.current = underSiege;
+    if (wonWave || justBreached) {
+      seq.current += 1;
+      setInvasion({ key: seq.current, breached: underSiege });
+      const id = setTimeout(() => setInvasion(null), durationMs);
+      return () => clearTimeout(id);
+    }
+  }, [wavesProcessed, underSiege, durationMs]);
+
+  return invasion;
+}
