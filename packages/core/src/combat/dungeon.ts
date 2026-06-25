@@ -25,6 +25,8 @@ export interface DungeonResult {
   rewards: Record<ItemId, number>;
   xp: Partial<Record<SkillId, number>>;
   hpAfter: number;
+  /** 입장 시 수비대 최대 HP (= 그 순간 마을 maxHp 스냅샷). 남은 HP의 분모 */
+  maxHp: number;
 }
 
 export interface DungeonAttempt {
@@ -131,6 +133,7 @@ export function attemptDungeon(state: GameState, dungeonId: DungeonId): DungeonA
       rewards,
       xp: gains.xp,
       hpAfter: hp,
+      maxHp: stats.maxHp,
     },
   };
 }

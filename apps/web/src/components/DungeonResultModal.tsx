@@ -9,6 +9,11 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
   const xpEntries = Object.entries(result.xp) as [SkillId, number][];
   const rewardEntries = Object.entries(result.rewards);
 
+  // 던전 HP는 마을 HP(우측 상단)와 별개인 "수비대 파견 풀"이다.
+  // 입장 시 마을 maxHp만큼으로 출정하므로, 그 스냅샷을 분모로 함께 보여 헷갈림을 막는다.
+  const hpLeft = Math.floor(result.hpAfter);
+  const hpPct = result.maxHp > 0 ? Math.round((hpLeft / result.maxHp) * 100) : 0;
+
   return (
     <div className="modal-backdrop">
       <div className="modal">
@@ -56,8 +61,11 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
           </div>
         )}
 
-        <div className="modal-section">
-          ❤️ 남은 HP: {Math.floor(result.hpAfter)}
+        <div
+          className="modal-section"
+          title="던전은 마을 HP와 별개로, 입장 시 최대 HP만큼의 수비대를 파견합니다 (우측 상단 마을 HP와 다른 수치)"
+        >
+          ❤️ 수비대 남은 HP: {hpLeft} / {result.maxHp} ({hpPct}%)
         </div>
 
         <button className="btn btn-primary" onClick={dismiss}>확인</button>
