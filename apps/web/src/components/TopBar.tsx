@@ -1,5 +1,5 @@
 import {
-  computeStats,
+  computeVillageStats,
   getAction,
   getItem,
   nextSlotUnlock,
@@ -23,11 +23,11 @@ export function TopBar() {
 
   const slots = unlockedActionSlots(game);
   const next = nextSlotUnlock(game);
-  const stats = computeStats(game);
+  const stats = computeVillageStats(game);
 
   return (
     <header className="topbar">
-      <h1 className="topbar-title">❄️ Winterforge</h1>
+      <h1 className="topbar-title">🛡️ Bulwark</h1>
       <div className="topbar-status">
         {game.activeActions.length > 0 ? (
           game.activeActions.map((active) => {
@@ -74,8 +74,11 @@ export function TopBar() {
           })}
         </div>
       )}
-      <div className="topbar-hp" title="HP — 사냥 중이 아닐 때 자연 회복됩니다">
-        ❤️ {Math.floor(game.hp)}/{stats.maxHp}
+      <div
+        className={`topbar-hp ${game.village.underSiege ? 'sieged' : ''}`}
+        title={game.village.underSiege ? '마을이 농성 중 — 수리/강화로 방어 재개' : '마을 HP — 웨이브 사이에 자연 회복됩니다'}
+      >
+        {game.village.underSiege ? '🛡️' : '❤️'} {Math.floor(game.village.hp)}/{stats.maxHp}
       </div>
       <div className="topbar-gold">🪙 {formatNumber(gold)}</div>
     </header>

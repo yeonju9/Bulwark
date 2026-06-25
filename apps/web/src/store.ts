@@ -1,6 +1,7 @@
 import {
   actionsForSkill,
   attemptDungeon,
+  buildBuilding,
   buyUpgrade,
   createInitialState,
   drinkPotion,
@@ -8,7 +9,9 @@ import {
   getAction,
   getItem,
   getSkill,
-  getUpgrade,
+  reinforceWall,
+  repairBuilding,
+  selectWaveTier,
   sellItem,
   setCombatFood,
   simulate,
@@ -17,6 +20,7 @@ import {
   unequipItem,
   unlockedActionSlots,
   type ActionId,
+  type BuildingId,
   type DungeonId,
   type DungeonResult,
   type EquipSlot,
@@ -29,15 +33,7 @@ import {
 import { create } from 'zustand';
 import { clearSave, loadSave, persistSave } from './save';
 
-export type Panel =
-  | SkillId
-  | 'inventory'
-  | 'shop'
-  | 'settings'
-  | 'character'
-  | 'hunt'
-  | 'dungeon'
-  | 'collection';
+export type Panel = SkillId | 'inventory' | 'shop' | 'settings' | 'map' | 'collection';
 
 export interface Toast {
   id: number;
@@ -61,6 +57,10 @@ interface GameStore {
   drink(itemId: ItemId): void;
   buy(skillId: SkillId): void;
   enterDungeon(dungeonId: DungeonId): void;
+  build(cellIndex: number, buildingId: BuildingId): void;
+  reinforce(): void;
+  repair(cellIndex: number): void;
+  selectTier(tier: number): void;
   dismissDungeonResult(): void;
   dismissOffline(): void;
   save(): void;
@@ -77,15 +77,14 @@ let toastSeq = 0;
 
 export function stoppedActionText(stopped: StoppedAction): string {
   const name = getAction(stopped.actionId).name;
-  return stopped.reason === 'low-hp'
-    ? `⚠️ ${name} — 체력이 부족해 사냥을 중단했습니다`
-    : `⚠️ ${name} — 재료가 떨어져 중단되었습니다`;
+  return `⚠️ ${name} — 재료가 떨어져 중단되었습니다`;
 }
 
 function bootstrap(): { game: GameState; offline: Gains | null } {
   const saved = loadSave();
   const base = saved ?? createInitialState(Date.now());
-  const { state, gains } = simulate(base, Date.now());
+  // 저장된 세이브가 있으면 오프라인 복귀 정산 (웨이브 보상 50%)
+  const { state, gains } = simulate(base, Date.now(), { offline: Boolean(saved) });
   const offline = saved && gains.elapsedMs >= OFFLINE_MODAL_THRESHOLD_MS ? gains : null;
   return { game: state, offline };
 }
@@ -112,6 +111,16 @@ function toastMessages(prev: GameState, next: GameState, gains: Gains): string[]
     messages.push(`✨ 작업 슬롯 확장! 이제 ${slotsAfter}개 작업을 동시에 진행할 수 있습니다`);
   }
 
+  if (gains.wave?.defeated) {
+    const what =
+      gains.wave.damaged === 'wall'
+        ? ' 성벽이 한 단계 무너졌습니다.'
+        : gains.wave.damaged === 'barracks'
+          ? ' 병영이 파손되었습니다.'
+          : '';
+    messages.push(`🛡️ 마을이 함락되어 농성에 들어갔습니다!${what} 수리·강화로 방어를 재개하세요`);
+  }
+
   for (const stopped of gains.stopped) {
     messages.push(stoppedActionText(stopped));
   }
@@ -121,7 +130,7 @@ function toastMessages(prev: GameState, next: GameState, gains: Gains): string[]
 
 export const useGame = create<GameStore>((set, get) => ({
   ...bootstrap(),
-  panel: 'woodcutting',
+  panel: 'map',
   toasts: [],
   dungeonResult: null,
 
@@ -193,26 +202,54 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     if (error) return;
     const stage = state.upgrades[skillId]!;
-    const upgrade = getUpgrade(skillId)!;
+    const upgrade = getSkill(skillId);
     set({ game: state });
-    get().pushToast(`${upgrade.icon} ${upgrade.stages[stage - 1].name} 구매! 채집 속도 상승`);
+    get().pushToast(`${upgrade.icon} ${upgrade.name} 도구 강화! (${stage}단계) 채집 속도 상승`);
   },
 
   enterDungeon: (dungeonId) => {
     const settled = simulate(get().game, Date.now()).state;
-    const { state, error, result } = attemptDungeon(settled, dungeonId, Date.now());
-    if (error === 'combat-in-progress') {
-      get().pushToast('❌ 사냥을 중단한 뒤 던전에 입장할 수 있습니다');
-      return;
-    }
-    if (error === 'on-cooldown') {
-      get().pushToast('⏳ 아직 재정비 중입니다');
-      return;
-    }
-    if (!error && result) {
+    const { state, error, result } = attemptDungeon(settled, dungeonId);
+    if (error) return;
+    if (result) {
       set({ game: state, dungeonResult: result });
       persistSave(state);
     }
+  },
+
+  build: (cellIndex, buildingId) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = buildBuilding(settled, cellIndex, buildingId);
+    if (error === 'not-enough-gold') get().pushToast('❌ 골드가 부족합니다');
+    else if (error === 'missing-materials') get().pushToast('❌ 자원이 부족합니다');
+    if (!error) set({ game: state });
+  },
+
+  reinforce: () => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = reinforceWall(settled);
+    if (error === 'not-enough-gold') get().pushToast('❌ 골드가 부족합니다');
+    else if (error === 'missing-materials') get().pushToast('❌ 자원이 부족합니다');
+    else if (error === 'max-wall') get().pushToast('성벽이 이미 최대 레벨입니다');
+    if (!error) set({ game: state });
+  },
+
+  repair: (cellIndex) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = repairBuilding(settled, cellIndex);
+    if (error === 'not-enough-gold') get().pushToast('❌ 골드가 부족합니다');
+    else if (error === 'missing-materials') get().pushToast('❌ 자원이 부족합니다');
+    if (!error) set({ game: state });
+  },
+
+  selectTier: (tier) => {
+    const settled = simulate(get().game, Date.now()).state;
+    const { state, error } = selectWaveTier(settled, tier);
+    if (error === 'tier-locked') {
+      get().pushToast('🔒 던전을 더 클리어해야 해금됩니다');
+      return;
+    }
+    if (!error) set({ game: state });
   },
 
   dismissDungeonResult: () => set({ dungeonResult: null }),
@@ -231,7 +268,7 @@ export const useGame = create<GameStore>((set, get) => ({
   resetGame: () => {
     clearSave();
     const fresh = createInitialState(Date.now());
-    set({ game: fresh, offline: null, panel: 'woodcutting' });
+    set({ game: fresh, offline: null, panel: 'map' });
     persistSave(fresh);
     get().pushToast('🔄 진행이 초기화되었습니다');
   },

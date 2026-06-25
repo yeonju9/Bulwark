@@ -12,12 +12,14 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
   return (
     <div className="modal-backdrop">
       <div className="modal">
-        <h2>{result.success ? '🏆 던전 클리어!' : '💀 패배…'}</h2>
+        <h2>{result.success ? (result.firstClear ? '🏆 첫 정복!' : '🏆 던전 클리어!') : '💀 패배…'}</h2>
         <p className="modal-sub">
           {dungeon.icon} {dungeon.name}
           {result.success
-            ? ` — ${(result.totalMs / 1000).toFixed(0)}초 만에 돌파했습니다`
-            : ' — 다음에는 더 좋은 장비와 음식을 준비하세요'}
+            ? result.firstClear
+              ? ` — 첫 클리어! 다음 웨이브 티어가 해금되었습니다`
+              : ` — ${(result.totalMs / 1000).toFixed(0)}초 만에 돌파했습니다`
+            : ' — 마을을 더 키우고 보급품을 갖춰 다시 도전하세요'}
         </p>
 
         <div className="modal-section">

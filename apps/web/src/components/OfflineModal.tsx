@@ -22,7 +22,25 @@ export function OfflineModal({ gains }: { gains: Gains }) {
               (오프라인 진행은 최대 12시간까지 인정됩니다)
             </span>
           )}
+          <br />
+          <span className="settings-desc">오프라인 웨이브 보상은 50%로 정산됩니다.</span>
         </p>
+
+        {gains.wave && (
+          <div className="modal-section">
+            <div>🛡️ 웨이브 {formatNumber(gains.wave.wavesWon)}회 방어</div>
+            {gains.wave.defeated && (
+              <div className="modal-warn">
+                마을이 함락되어 농성에 들어갔습니다
+                {gains.wave.damaged === 'wall'
+                  ? ' — 성벽이 한 단계 무너졌습니다'
+                  : gains.wave.damaged === 'barracks'
+                    ? ' — 병영이 파손되었습니다'
+                    : ''}
+              </div>
+            )}
+          </div>
+        )}
 
         {levelUpEntries.length > 0 && (
           <div className="modal-section">

@@ -1,4 +1,4 @@
-import { COMBAT_SKILL_IDS, levelFromXp, SKILLS, xpProgress } from '@idle-rpg/core';
+import { COMBAT_SKILL_IDS, computeVillageStats, levelFromXp, SKILLS, xpProgress } from '@idle-rpg/core';
 import { useGame, type Panel } from '../store';
 
 function NavItem({
@@ -36,29 +36,28 @@ function NavItem({
 }
 
 export function Sidebar() {
-  const skills = useGame((s) => s.game.skills);
-  const inventory = useGame((s) => s.game.inventory);
+  const game = useGame((s) => s.game);
+  const skills = game.skills;
+  const inventory = game.inventory;
   const panel = useGame((s) => s.panel);
   const setPanel = useGame((s) => s.setPanel);
-  const activeActions = useGame((s) => s.game.activeActions);
-  const hp = useGame((s) => s.game.hp);
+  const activeActions = game.activeActions;
+  const village = game.village;
 
   const attackLevel = levelFromXp(skills.attack.xp);
-  const hpLevel = levelFromXp(skills.hitpoints.xp);
-  const hunting = activeActions.some((a) => a.skillId === 'attack');
+  const maxHp = computeVillageStats(game).maxHp;
 
   return (
     <nav className="sidebar">
-      <div className="sidebar-section">전투</div>
+      <div className="sidebar-section">마을</div>
       <NavItem
-        panel="character"
-        icon="🧙"
-        name="캐릭터"
-        sub={`HP ${Math.floor(hp)}/${hpLevel * 10}`}
+        panel="map"
+        icon="🗺️"
+        name="마을 지도"
+        sub={`HP ${Math.floor(village.hp)}/${maxHp}`}
+        pulse={village.underSiege}
       />
-      <NavItem panel="hunt" icon="⚔️" name="사냥터" sub={`공격 Lv ${attackLevel}`} pulse={hunting} />
-      <NavItem panel="dungeon" icon="🏰" name="던전" />
-      <NavItem panel="collection" icon="📖" name="도감" />
+      <NavItem panel="collection" icon="📖" name="도감" sub={`공격 Lv ${attackLevel}`} />
 
       <div className="sidebar-section">스킬</div>
       {SKILLS.filter((skill) => !COMBAT_SKILL_IDS.includes(skill.id)).map((skill) => {
