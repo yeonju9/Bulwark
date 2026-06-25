@@ -9,7 +9,7 @@ const {
   actionsForSkill, getMonster, getSkill, xpForLevel, MAX_LEVEL,
   damageTakenPerKill, hitpointsXpPerKill,
   createInitialState, computeVillageStats, grossWaveDamage, getStage,
-  WAVE_PERIOD_MS, REGEN_PER_MINUTE_PER_HP_LEVEL, wallReinforceCost, getBuilding,
+  WAVE_PERIOD_MS, REGEN_PER_MINUTE_PER_HP_LEVEL, WAVE_GOLD_BASE, wallReinforceCost, getBuilding,
 } = require('../dist/index.js');
 
 function fmt(ms) {
@@ -221,7 +221,8 @@ for (const build of BUILDS) {
       (a, id) => a + hitpointsXpPerKill(damageTakenPerKill(stats, getMonster(id))), 0,
     ) * tier.rewardMultiplier;
     const xpPerHour = Math.round((attackXp + hpXp) * wavesPerHour);
-    const goldPerHour = Math.round(lootGoldPerWave(tier.monsters) * wavesPerHour);
+    const goldPerWave = lootGoldPerWave(tier.monsters) + WAVE_GOLD_BASE * tier.rewardMultiplier;
+    const goldPerHour = Math.round(goldPerWave * wavesPerHour);
     let hold;
     if (net <= 0) hold = '✅안전(무한 방어)';
     else {
@@ -233,6 +234,45 @@ for (const build of BUILDS) {
       `· XP ${String(xpPerHour).padStart(6)}/h · 🪙 ${String(goldPerHour).padStart(5)}/h · ${hold}`,
     );
   }
+}
+
+// ━━━ 티어 해금 정렬 점검 (각 티어를 "열리는 시점의 실제 빌드"로 평가) ━━━
+// 티어는 던전 클리어로 열린다(stages.ts unlockClears). 던전을 깨려면 그만한 전투력이
+// 필요하므로, 티어를 여는 시점의 빌드는 새 마을이 아니라 그 던전 레벨대의 빌드다.
+// 아래는 "해금 직후 대표 빌드"로 그 티어를 평가해, 표의 '즉시 패배' 착시를 걷어낸다.
+console.log('\n▶ 티어 해금 정렬 점검 (해금 시점의 대표 빌드로 평가 — 목표: 5~30웨이브)');
+console.log('  (던전 클리어로 티어 해금 → 그 던전 레벨대의 빌드를 가정)');
+
+// 해금 시점 대표 빌드. 던전 레벨(thicket5/wolf12/goblin20/orc30)에 맞춰 추정.
+const UNLOCK_BUILDS = {
+  1: { label: '시작(새 마을)', atk: 1, hp: 10, wall: 0, barracks: 0 },
+  2: { label: '던전1 클리어 직후', atk: 6, hp: 12, wall: 1, barracks: 1, weapon: 'copper_sword', armor: 'leather_armor' },
+  3: { label: '던전2 클리어 직후', atk: 13, hp: 16, wall: 2, barracks: 1, weapon: 'copper_sword', armor: 'leather_armor' },
+  4: { label: '던전3 클리어 직후', atk: 20, hp: 22, wall: 4, barracks: 2, weapon: 'iron_sword', armor: 'iron_armor' },
+  5: { label: '던전4 클리어 직후', atk: 30, hp: 30, wall: 6, barracks: 3, weapon: 'mithril_sword', armor: 'mithril_armor' },
+};
+
+for (const tier of stage1.tiers) {
+  const build = UNLOCK_BUILDS[tier.tier];
+  const stats = computeVillageStats(buildState(build));
+  const gross = grossWaveDamage(stats, tier.monsters);
+  const regen = regenPerWave(stats.hpLevel);
+  const net = Number.isFinite(gross) ? Math.max(0, gross - regen) : Infinity;
+  let verdict, hold;
+  if (net <= 0) {
+    hold = '∞ 무한 방어';
+    verdict = '🟦 너무 쉬움(해금 즉시 무한 안전)';
+  } else {
+    const w = Math.floor((stats.maxHp - 1) / net);
+    hold = w <= 0 ? '0웨이브' : `${w}웨이브 (${fmt(w * WAVE_PERIOD_MS)})`;
+    verdict = w <= 0 ? '🟥 너무 어려움(즉시 패배)' : w < 5 ? '🟧 빡빡함(<5웨이브)' : w <= 30 ? '🟩 적정(5~30웨이브)' : '🟦 너무 쉬움(>30웨이브)';
+  }
+  console.log(
+    `  T${tier.tier} ${tier.name.padEnd(8, ' ')} [${build.label}] ` +
+    `공Lv${build.atk}·체Lv${build.hp} → 공격력 ${String(stats.attackPower).padStart(3)}·방어 ${String(stats.defense).padStart(2)}·HP ${String(stats.maxHp).padStart(4)} ` +
+    `· 피해 ${String(Number.isFinite(gross) ? gross : '∞').padStart(4)}/회복 ${String(regen).padStart(3)} ` +
+    `→ net ${String(net === Infinity ? '∞' : net).padStart(4)} · ${hold.padEnd(16)} ${verdict}`,
+  );
 }
 
 // ━━━ 성벽 강화 비용 곡선 ━━━

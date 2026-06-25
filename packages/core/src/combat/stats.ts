@@ -3,8 +3,9 @@ import type { MonsterDef } from '../types';
 /** 마을 수비대 공격 주기 (장비/건물 차이는 공격력으로만 표현) */
 export const VILLAGE_ATTACK_INTERVAL_MS = 2400;
 
-/** 마을 HP 자연 회복: 분당 (체력 레벨)만큼 */
-export const REGEN_PER_MINUTE_PER_HP_LEVEL = 1;
+/** 마을 HP 자연 회복: 분당 (체력 레벨 × 이 값)만큼.
+ * 0.5 = 웨이브 사이 절반만 회복 → 상위 티어가 천천히 깎이는 농성이 성립(밸런스). */
+export const REGEN_PER_MINUTE_PER_HP_LEVEL = 0.5;
 
 /** 마을의 파생 전투 스탯. 건물·성벽·스킬·장비에서 computeVillageStats가 만든다 */
 export interface VillageStats {
@@ -45,8 +46,17 @@ export function damageTakenPerKill(stats: VillageStats, monster: MonsterDef): nu
   return Math.round((monsterDps * ttk) / 1000);
 }
 
-/** 처치 1회당 체력 XP: 받은 피해에 비례 (방어가 높으면 체력 XP는 줄어드는 트레이드오프) */
+/**
+ * 처치 1회당 최소 체력 XP. 방어가 높아 피해를 거의 안 받아도 처치 자체로 이만큼은 준다 —
+ * 튼튼한 마을의 체력 레벨이 안전 티어에서 완전히 정체되는 것을 막는다.
+ */
+export const HP_XP_FLOOR_PER_KILL = 3;
+
+/**
+ * 처치 1회당 체력 XP: 받은 피해에 비례하되 처치당 최소 바닥값을 보장.
+ * (방어가 높으면 비례분은 줄지만, 처치 수만으로도 체력이 꾸준히 자란다.)
+ */
 export function hitpointsXpPerKill(damageTaken: number): number {
   if (!Number.isFinite(damageTaken)) return 0;
-  return Math.round(damageTaken * 1.5);
+  return Math.max(HP_XP_FLOOR_PER_KILL, Math.round(damageTaken * 1.5));
 }

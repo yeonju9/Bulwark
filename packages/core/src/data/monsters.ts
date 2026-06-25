@@ -18,7 +18,7 @@ const monsterList: MonsterDef[] = [
   },
   {
     id: 'wolf', name: '늑대', icon: '🐺', levelRequired: 10,
-    hp: 50, attack: 9, defense: 4, attackIntervalMs: 2200, xp: 28,
+    hp: 68, attack: 17, defense: 5, attackIntervalMs: 2200, xp: 28,
     lootTable: [
       { itemId: 'leather', qty: 1, chance: 0.8 },
       { itemId: 'dried_meat', qty: 1, chance: 0.4 },
@@ -26,7 +26,7 @@ const monsterList: MonsterDef[] = [
   },
   {
     id: 'goblin', name: '고블린', icon: '👺', levelRequired: 15,
-    hp: 75, attack: 12, defense: 6, attackIntervalMs: 2400, xp: 42,
+    hp: 100, attack: 22, defense: 7, attackIntervalMs: 2400, xp: 42,
     lootTable: [
       { itemId: 'magic_stone', qty: 1, chance: 0.15 },
       { itemId: 'dried_meat', qty: 1, chance: 0.3 },
@@ -34,12 +34,12 @@ const monsterList: MonsterDef[] = [
   },
   {
     id: 'goblin_shaman', name: '고블린 주술사', icon: '🧿', levelRequired: 22,
-    hp: 100, attack: 18, defense: 8, attackIntervalMs: 2600, xp: 60,
+    hp: 135, attack: 32, defense: 9, attackIntervalMs: 2600, xp: 60,
     lootTable: [{ itemId: 'magic_stone', qty: 1, chance: 0.35 }],
   },
   {
     id: 'orc', name: '오크', icon: '👹', levelRequired: 30,
-    hp: 160, attack: 26, defense: 12, attackIntervalMs: 2800, xp: 90,
+    hp: 210, attack: 46, defense: 13, attackIntervalMs: 2800, xp: 90,
     lootTable: [
       { itemId: 'magic_stone', qty: 1, chance: 0.4 },
       { itemId: 'leather', qty: 2, chance: 0.5 },

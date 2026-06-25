@@ -20,6 +20,8 @@ export const WAVE_PERIOD_MS = 3 * 60 * 1000;
 export const ATTACK_PER_SKILL_LEVEL = 1;
 /** 마을 최대 HP = 건물 + 성벽 + (체력 레벨 × 이 값) */
 export const HP_PER_SKILL_LEVEL = 10;
+/** 웨이브 1회 승리당 기본 골드 보상 (티어 보상배율을 곱한다 — 마을 방어로 성벽·수리비를 일부 자급) */
+export const WAVE_GOLD_BASE = 25;
 
 /**
  * 마을 스탯 = 건물(본부+병영 등, 파손 제외) 주력 + 성벽 링 + 공격/체력 스킬 보조 + 장비 보조.
@@ -168,6 +170,8 @@ export function settleWaves(
   const heal = supply?.food?.heal ?? 0;
 
   let wavesWon = 0;
+  let goldWon = 0;
+  let xpWon = 0;
   let defeated = false;
   let damaged: 'wall' | 'barracks' | undefined;
 
@@ -195,8 +199,15 @@ export function settleWaves(
       hpXp += hitpointsXpPerKill(Number.isFinite(dmg) ? dmg : 0);
     }
     const attackXpBase = tier.monsters.reduce((sum, id) => sum + getMonster(id).xp, 0);
-    grantXp(state, gains, 'attack', Math.round(attackXpBase * tier.rewardMultiplier * halving));
-    grantXp(state, gains, 'hitpoints', Math.round(hpXp * tier.rewardMultiplier * halving));
+    const atkGain = Math.round(attackXpBase * tier.rewardMultiplier * halving);
+    const hpGain = Math.round(hpXp * tier.rewardMultiplier * halving);
+    grantXp(state, gains, 'attack', atkGain);
+    grantXp(state, gains, 'hitpoints', hpGain);
+
+    const goldGain = Math.round(WAVE_GOLD_BASE * tier.rewardMultiplier * halving);
+    state.gold += goldGain;
+    goldWon += goldGain;
+    xpWon += atkGain + hpGain;
 
     if (net > 0) {
       const absorbedByHp = Math.min(v.hp - 1, net);
@@ -231,6 +242,8 @@ export function settleWaves(
     const prev = gains.wave;
     gains.wave = {
       wavesWon: (prev?.wavesWon ?? 0) + wavesWon,
+      goldWon: (prev?.goldWon ?? 0) + goldWon,
+      xpWon: (prev?.xpWon ?? 0) + xpWon,
       defeated: (prev?.defeated ?? false) || defeated,
       damaged: defeated ? damaged : prev?.damaged,
       wallLevelAfter: defeated ? v.wallLevel : prev?.wallLevelAfter,

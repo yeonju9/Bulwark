@@ -119,6 +119,16 @@ function toastMessages(prev: GameState, next: GameState, gains: Gains): string[]
           ? ' 병영이 파손되었습니다.'
           : '';
     messages.push(`🛡️ 마을이 함락되어 농성에 들어갔습니다!${what} 수리·강화로 방어를 재개하세요`);
+  } else if (gains.wave && gains.wave.wavesWon > 0) {
+    // 막아낸 웨이브 — 번호 + 보상 요약 (패배 시엔 농성 메시지로 대체)
+    const n = next.village.wavesProcessed;
+    const reward = [
+      gains.wave.goldWon > 0 ? `🪙 ${gains.wave.goldWon}` : '',
+      gains.wave.xpWon > 0 ? `+${gains.wave.xpWon} XP` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    messages.push(`🛡️ 웨이브 #${n} 격퇴!${reward ? ` ${reward}` : ''}`);
   }
 
   for (const stopped of gains.stopped) {

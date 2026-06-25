@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { formatNumber } from '../format';
 import { iconUrl } from '../icons';
 import { useGame } from '../store';
+import { useWavePulse } from '../useWavePulse';
 import { GameIcon } from './GameIcon';
 
 const SLOT_LABEL: Record<EquipSlot, string> = { weapon: '무기', armor: '방어구' };
@@ -171,6 +172,7 @@ export function MapPanel() {
   const setFood = useGame((s) => s.setFood);
 
   const [sel, setSel] = useState<Selection>({ kind: 'none' });
+  const wavePulse = useWavePulse();
 
   const v = game.village;
   const stats = computeVillageStats(game);
@@ -190,7 +192,7 @@ export function MapPanel() {
       <div className="map-screen">
         {/* 웨이브 배너 */}
         <div
-          className={`wave-banner ${sel.kind === 'wave' ? 'sel' : ''}`}
+          className={`wave-banner ${sel.kind === 'wave' ? 'sel' : ''} ${wavePulse ? 'flash' : ''}`}
           onClick={() => setSel({ kind: 'wave' })}
         >
           <span className="wb-icon">🌊</span>
@@ -198,7 +200,7 @@ export function MapPanel() {
             <span className="wb-title">마을 농성 중 — 수리·강화로 방어 재개</span>
           ) : (
             <span className="wb-title">
-              다음 침공까지{' '}
+              웨이브 #{v.wavesProcessed + 1} 침공까지{' '}
               <span className="wb-timer">{timerText(WAVE_PERIOD_MS - v.waveProgressMs)}</span>
             </span>
           )}

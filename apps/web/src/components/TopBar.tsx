@@ -8,6 +8,7 @@ import {
 } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+import { useWavePulse } from '../useWavePulse';
 
 function remainingText(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -24,6 +25,7 @@ export function TopBar() {
   const slots = unlockedActionSlots(game);
   const next = nextSlotUnlock(game);
   const stats = computeVillageStats(game);
+  const wavePulse = useWavePulse();
 
   return (
     <header className="topbar">
@@ -75,7 +77,7 @@ export function TopBar() {
         </div>
       )}
       <div
-        className={`topbar-hp ${game.village.underSiege ? 'sieged' : ''}`}
+        className={`topbar-hp ${game.village.underSiege ? 'sieged' : ''} ${wavePulse ? 'shake' : ''}`}
         title={game.village.underSiege ? '마을이 농성 중 — 수리/강화로 방어 재개' : '마을 HP — 웨이브 사이에 자연 회복됩니다'}
       >
         {game.village.underSiege ? '🛡️' : '❤️'} {Math.floor(game.village.hp)}/{stats.maxHp}

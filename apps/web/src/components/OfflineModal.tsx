@@ -28,7 +28,10 @@ export function OfflineModal({ gains }: { gains: Gains }) {
 
         {gains.wave && (
           <div className="modal-section">
-            <div>🛡️ 웨이브 {formatNumber(gains.wave.wavesWon)}회 방어</div>
+            <div>
+              🛡️ 웨이브 {formatNumber(gains.wave.wavesWon)}회 방어
+              {gains.wave.goldWon > 0 && <> · 🪙 {formatNumber(gains.wave.goldWon)}</>}
+            </div>
             {gains.wave.defeated && (
               <div className="modal-warn">
                 마을이 함락되어 농성에 들어갔습니다

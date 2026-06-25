@@ -242,6 +242,10 @@ export interface StoppedAction {
 export interface WaveReport {
   /** 막아낸(승리) 웨이브 수 */
   wavesWon: number;
+  /** 승리한 웨이브에서 얻은 골드 합계 (오프라인이면 50%) */
+  goldWon: number;
+  /** 승리한 웨이브에서 얻은 XP 합계(공격+체력, 오프라인이면 50%) — 격퇴 알림용 */
+  xpWon: number;
   /** 패배해 농성에 진입했는가 */
   defeated: boolean;
   /** 패배 시 손상된 구조물 */
