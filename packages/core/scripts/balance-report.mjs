@@ -10,6 +10,7 @@ const {
   damageTakenPerKill, hitpointsXpPerKill,
   createInitialState, computeVillageStats, grossWaveDamage, getStage,
   WAVE_PERIOD_MS, REGEN_PER_MINUTE_PER_HP_LEVEL, WAVE_GOLD_BASE, wallReinforceCost, getBuilding,
+  attemptDungeon, allDungeons,
 } = require('../dist/index.js');
 
 function fmt(ms) {
@@ -272,6 +273,39 @@ for (const tier of stage1.tiers) {
     `공Lv${build.atk}·체Lv${build.hp} → 공격력 ${String(stats.attackPower).padStart(3)}·방어 ${String(stats.defense).padStart(2)}·HP ${String(stats.maxHp).padStart(4)} ` +
     `· 피해 ${String(Number.isFinite(gross) ? gross : '∞').padStart(4)}/회복 ${String(regen).padStart(3)} ` +
     `→ net ${String(net === Infinity ? '∞' : net).padStart(4)} · ${hold.padEnd(16)} ${verdict}`,
+  );
+}
+
+// ━━━ 던전 난이도 점검 (해당 레벨대 대표 빌드로 실제 공략 시뮬레이션) ━━━
+// 던전은 마을 maxHp만큼의 수비대로 출정 → 몬스터를 순서대로 처치 → 보급품으로 회복.
+// 목표: 권장 레벨대 빌드가 '빠듯하게' 클리어(식량 소비 + HP 여유 적음). 너무 쉬우면 게이트 의미 없음.
+console.log('\n▶ 던전 난이도 점검 (권장 레벨대 빌드로 실제 공략 — 목표: 빠듯한 클리어)');
+const DUNGEON_BUILDS = {
+  thicket_burrow: { atk: 5, hp: 11, wall: 1, barracks: 0, weapon: 'copper_sword', armor: 'leather_armor', food: 'cooked_herring', foodQty: 20 },
+  wolf_hollow: { atk: 12, hp: 15, wall: 2, barracks: 1, weapon: 'copper_sword', armor: 'leather_armor', food: 'cooked_salmon', foodQty: 20 },
+  goblin_den: { atk: 20, hp: 22, wall: 4, barracks: 2, weapon: 'iron_sword', armor: 'iron_armor', food: 'cooked_tuna', foodQty: 25 },
+  orc_warcamp: { atk: 30, hp: 30, wall: 6, barracks: 3, weapon: 'mithril_sword', armor: 'mithril_armor', food: 'cooked_shark', foodQty: 30 },
+};
+for (const dungeon of allDungeons()) {
+  const b = DUNGEON_BUILDS[dungeon.id];
+  if (!b) continue;
+  const s = buildState(b);
+  s.combatFood = b.food;
+  s.inventory = { [b.food]: b.foodQty };
+  const stats = computeVillageStats(s);
+  const { result } = attemptDungeon(s, dungeon.id);
+  const foodUsed = result.fights.reduce((a, f) => a + f.foodUsed, 0);
+  const killed = result.fights.filter((f) => f.defeated).length;
+  const pct = Math.round((result.hpAfter / result.maxHp) * 100);
+  const verdict = !result.success
+    ? `🟥 패배 (${killed}/${dungeon.monsters.length}마리 처치)`
+    : pct >= 70 ? '🟦 너무 쉬움(HP 70%+ 잔존)'
+    : pct >= 20 ? '🟩 적정(빠듯한 클리어)'
+    : '🟧 아슬아슬(HP <20%)';
+  console.log(
+    `  ${dungeon.icon} ${dungeon.name.padEnd(7)} [Lv${dungeon.level} 빌드 공${b.atk}·체${b.hp}] ` +
+    `공격력 ${stats.attackPower}·방어 ${stats.defense}·출정HP ${stats.maxHp} → ` +
+    `${result.success ? '클리어' : '패배'} · 남은HP ${Math.floor(result.hpAfter)}/${result.maxHp} (${pct}%) · 식량 ${foodUsed}개 · ${verdict}`,
   );
 }
 

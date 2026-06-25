@@ -22,13 +22,13 @@ const gatheringAndCrafting: ActionDef[] = [
   { id: 'wc_oak', skillId: 'woodcutting', name: '참나무', icon: '🌳', levelRequired: 10, durationMs: 4000, xp: 25, outputs: [{ itemId: 'oak_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'wc_maple', skillId: 'woodcutting', name: '단풍나무', icon: '🍁', levelRequired: 25, durationMs: 5000, xp: 45, outputs: [{ itemId: 'maple_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'wc_yew', skillId: 'woodcutting', name: '주목', icon: '🌲', levelRequired: 40, durationMs: 6000, xp: 80, outputs: [{ itemId: 'yew_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
-  { id: 'wc_magic', skillId: 'woodcutting', name: '마법나무', icon: '🪄', levelRequired: 55, durationMs: 7000, xp: 130, outputs: [{ itemId: 'magic_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
+  { id: 'wc_magic', skillId: 'woodcutting', name: '마법나무', icon: '🌟', levelRequired: 55, durationMs: 7000, xp: 130, outputs: [{ itemId: 'magic_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'wc_ancient', skillId: 'woodcutting', name: '고대나무', icon: '🌳', levelRequired: 70, durationMs: 8000, xp: 210, outputs: [{ itemId: 'ancient_log', qty: 1 }], byproducts: HERB_BYPRODUCT },
 
   // 채광
-  { id: 'mi_copper', skillId: 'mining', name: '구리 광맥', icon: '🪨', levelRequired: 1, durationMs: 3000, xp: 12, outputs: [{ itemId: 'copper_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
-  { id: 'mi_iron', skillId: 'mining', name: '철 광맥', icon: '🪨', levelRequired: 10, durationMs: 4500, xp: 30, outputs: [{ itemId: 'iron_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
-  { id: 'mi_silver', skillId: 'mining', name: '은 광맥', icon: '🪨', levelRequired: 20, durationMs: 5000, xp: 42, outputs: [{ itemId: 'silver_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
+  { id: 'mi_copper', skillId: 'mining', name: '구리 광맥', icon: '🥌', levelRequired: 1, durationMs: 3000, xp: 12, outputs: [{ itemId: 'copper_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
+  { id: 'mi_iron', skillId: 'mining', name: '철 광맥', icon: '🥌', levelRequired: 10, durationMs: 4500, xp: 30, outputs: [{ itemId: 'iron_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
+  { id: 'mi_silver', skillId: 'mining', name: '은 광맥', icon: '🥌', levelRequired: 20, durationMs: 5000, xp: 42, outputs: [{ itemId: 'silver_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'mi_mithril', skillId: 'mining', name: '미스릴 광맥', icon: '💎', levelRequired: 30, durationMs: 6000, xp: 65, outputs: [{ itemId: 'mithril_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'mi_adamantite', skillId: 'mining', name: '아다만타이트 광맥', icon: '🟩', levelRequired: 45, durationMs: 7000, xp: 110, outputs: [{ itemId: 'adamantite_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },
   { id: 'mi_orichalcum', skillId: 'mining', name: '오리할콘 광맥', icon: '🟨', levelRequired: 60, durationMs: 8000, xp: 170, outputs: [{ itemId: 'orichalcum_ore', qty: 1 }], byproducts: HERB_BYPRODUCT },

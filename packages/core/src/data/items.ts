@@ -2,17 +2,17 @@ import type { ItemDef, ItemId } from '../types';
 
 const list: ItemDef[] = [
   // 벌목 산출물
-  { id: 'normal_log', name: '통나무', icon: '🪵', sellPrice: 1 },
-  { id: 'oak_log', name: '참나무 통나무', icon: '🪵', sellPrice: 5 },
-  { id: 'maple_log', name: '단풍나무 통나무', icon: '🪵', sellPrice: 15 },
-  { id: 'yew_log', name: '주목 통나무', icon: '🪵', sellPrice: 40 },
-  { id: 'magic_log', name: '마법나무 통나무', icon: '🪄', sellPrice: 80 },
+  { id: 'normal_log', name: '통나무', icon: '🌲', sellPrice: 1 },
+  { id: 'oak_log', name: '참나무 통나무', icon: '🌰', sellPrice: 5 },
+  { id: 'maple_log', name: '단풍나무 통나무', icon: '🍁', sellPrice: 15 },
+  { id: 'yew_log', name: '주목 통나무', icon: '🌲', sellPrice: 40 },
+  { id: 'magic_log', name: '마법나무 통나무', icon: '🌟', sellPrice: 80 },
   { id: 'ancient_log', name: '고대나무 통나무', icon: '🌳', sellPrice: 130 },
 
   // 채광 산출물
-  { id: 'copper_ore', name: '구리 광석', icon: '🪨', sellPrice: 2 },
-  { id: 'iron_ore', name: '철 광석', icon: '🪨', sellPrice: 8 },
-  { id: 'silver_ore', name: '은 광석', icon: '🪨', sellPrice: 15 },
+  { id: 'copper_ore', name: '구리 광석', icon: '🥌', sellPrice: 2 },
+  { id: 'iron_ore', name: '철 광석', icon: '🥌', sellPrice: 8 },
+  { id: 'silver_ore', name: '은 광석', icon: '🥌', sellPrice: 15 },
   { id: 'mithril_ore', name: '미스릴 광석', icon: '💎', sellPrice: 25 },
   { id: 'adamantite_ore', name: '아다만타이트 광석', icon: '🟩', sellPrice: 45 },
   { id: 'orichalcum_ore', name: '오리할콘 광석', icon: '🟨', sellPrice: 70 },
@@ -41,7 +41,7 @@ const list: ItemDef[] = [
   { id: 'orichalcum_armor', name: '오리할콘 갑옷', icon: '👘', sellPrice: 1200, equip: { slot: 'armor', defense: 34, levelRequired: 50 } },
 
   // 전투 전리품
-  { id: 'jelly', name: '끈적한 젤리', icon: '🫧', sellPrice: 3 },
+  { id: 'jelly', name: '끈적한 젤리', icon: '🍮', sellPrice: 3 },
   { id: 'leather', name: '가죽', icon: '🟫', sellPrice: 5 },
   { id: 'dried_meat', name: '말린 고기', icon: '🍖', sellPrice: 4, food: { heal: 15 } },
   { id: 'magic_stone', name: '마정석', icon: '🔮', sellPrice: 30 },

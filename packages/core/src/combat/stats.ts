@@ -4,8 +4,9 @@ import type { MonsterDef } from '../types';
 export const VILLAGE_ATTACK_INTERVAL_MS = 2400;
 
 /** 마을 HP 자연 회복: 분당 (체력 레벨 × 이 값)만큼.
- * 0.5 = 웨이브 사이 절반만 회복 → 상위 티어가 천천히 깎이는 농성이 성립(밸런스). */
-export const REGEN_PER_MINUTE_PER_HP_LEVEL = 0.5;
+ * 0.2 = 회복이 체력레벨을 약하게만 따라가게 해, "레벨업→회복증가→무적"의 고리를 끊는다.
+ * (높을수록 상위 티어가 금방 무한 방어가 되어 긴장감이 사라짐 — 밸런스 핵심 노브) */
+export const REGEN_PER_MINUTE_PER_HP_LEVEL = 0.2;
 
 /** 마을의 파생 전투 스탯. 건물·성벽·스킬·장비에서 computeVillageStats가 만든다 */
 export interface VillageStats {

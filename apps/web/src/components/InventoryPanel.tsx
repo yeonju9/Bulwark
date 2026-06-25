@@ -1,6 +1,7 @@
 import { getItem } from '@idle-rpg/core';
 import { formatNumber, potionEffectText } from '../format';
 import { useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function InventoryPanel() {
   const inventory = useGame((s) => s.game.inventory);
@@ -23,7 +24,7 @@ export function InventoryPanel() {
             const item = getItem(itemId);
             return (
               <div key={itemId} className="inventory-card">
-                <div className="action-icon">{item.icon}</div>
+                <div className="action-icon"><GameIcon id={itemId} emoji={item.icon} size={34} /></div>
                 <div className="action-name">{item.name}</div>
                 <div className="action-meta">×{formatNumber(qty)}</div>
                 <div className="action-meta">개당 🪙 {formatNumber(item.sellPrice)}</div>

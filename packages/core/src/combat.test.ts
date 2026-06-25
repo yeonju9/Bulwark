@@ -131,14 +131,14 @@ describe('웨이브 방어 — 패배와 농성', () => {
         dungeonClears: ALL_CLEARED,
         village: villageWith({ wallLevel: 2, hp: 350 }),
         combatFood: 'cooked_shark',
-        inventory: { cooked_shark: 80 },
+        inventory: { cooked_shark: 200 },
       }),
       T0 + WAVE_PERIOD_MS,
     );
     expect(noSupply.gains.wave!.defeated).toBe(true);
     expect(noSupply.gains.wave!.wavesWon).toBe(0); // 보급품 없으면 첫 웨이브에서 패배
     expect(supplied.gains.wave!.wavesWon).toBeGreaterThan(0);
-    expect(supplied.state.inventory['cooked_shark']).toBeLessThan(80); // 소비됨
+    expect(supplied.state.inventory['cooked_shark']).toBeLessThan(200); // 소비됨
   });
 });
 
