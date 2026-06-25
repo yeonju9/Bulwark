@@ -36,7 +36,7 @@ export interface Invasion {
  * 막아낸 웨이브(wavesProcessed 증가)뿐 아니라 첫 웨이브에 바로 함락(농성 진입)되는 경우도
  * 잡는다 — 후자는 wavesProcessed가 안 오르므로 underSiege 전환(false→true)으로 감지.
  */
-export function useWaveInvasion(durationMs = 1700): Invasion | null {
+export function useWaveInvasion(durationMs = 2800): Invasion | null {
   const wavesProcessed = useGame((s) => s.game.village.wavesProcessed);
   const underSiege = useGame((s) => s.game.village.underSiege);
   const prevW = useRef(wavesProcessed);
