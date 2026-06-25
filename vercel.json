@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build -w @idle-rpg/web",
-  "installCommand": "npm install",
-  "outputDirectory": "dist",
-  "framework": "vite"
-}

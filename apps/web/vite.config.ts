@@ -10,10 +10,4 @@ export default defineConfig({
       '@idle-rpg/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),
     },
   },
-  build: {
-    // Vercel은 저장소 루트에서 빌드하고 산출물을 루트의 dist에서 찾는다.
-    // vite의 CWD가 apps/web이라 기본값이면 apps/web/dist가 되어 어긋나므로 루트 dist로 내보낸다.
-    outDir: fileURLToPath(new URL('../../dist', import.meta.url)),
-    emptyOutDir: true,
-  },
 });
