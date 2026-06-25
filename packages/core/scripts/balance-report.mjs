@@ -5,9 +5,11 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const {
-  ACTIONS, HUNT_ACTIONS, ITEMS, SKILLS, SLOT_UNLOCKS, UPGRADES,
+  ACTIONS, ITEMS, SKILLS, SLOT_UNLOCKS, UPGRADES,
   actionsForSkill, getMonster, getSkill, xpForLevel, MAX_LEVEL,
-  damageTakenPerKill, hitpointsXpPerKill, timeToKillMs, HUNT_DOWNTIME_MS,
+  damageTakenPerKill, hitpointsXpPerKill,
+  createInitialState, computeVillageStats, grossWaveDamage, getStage,
+  WAVE_PERIOD_MS, REGEN_PER_MINUTE_PER_HP_LEVEL, wallReinforceCost, getBuilding,
 } = require('../dist/index.js');
 
 function fmt(ms) {
@@ -157,80 +159,97 @@ for (const upgrade of UPGRADES) {
   }
 }
 
-// ━━━ 장비 티어 × 몬스터 손익표 (Phase 2 잔여: 전투 밸런스 패스) ━━━
-// 가정: 공격/체력 레벨은 해당 장비를 막 쓸 시점의 값 (test-save 프리셋과 동일선).
-// 음식은 그 시점에 요리 가능한 대표 음식 기준. 위험도는 HuntPanel 배지와 동일
-// (처치당 피해/최대HP ≥25% 위험, ≥8% 주의). "요리 초과"는 요리 1슬롯 생산량보다
-// 소모가 큰 조합 — 사냥을 쉬며 음식을 비축해야 유지된다는 뜻.
-console.log('\n▶ 장비 티어 × 몬스터 손익표 (음식 = 티어 대표 음식 기준 소모량)');
+// ━━━ 마을 방어 손익표 (Phase 3.5: 웨이브 정산 밸런스) ━━━
+// 가정: 정적 스냅샷 — 스탯 고정(웨이브 중 레벨업 무시), 보급품 없음(순수 HP 버티기).
+// 실제로는 매 웨이브 처치 XP로 마을이 강해져 더 오래 버틴다(보수적 하한 추정).
+// net = 웨이브당 받는 피해 - 자연회복. net≤0이면 무한 방어(안전 파밍 티어).
+console.log('\n▶ 마을 방어 손익표 — 빌드 × 웨이브 티어 (정적 스냅샷, 보급품 없음)');
+console.log(`  (웨이브 주기 ${WAVE_PERIOD_MS / 60000}분, 자연회복 분당 체력레벨×${REGEN_PER_MINUTE_PER_HP_LEVEL})`);
 
-const TIERS = [
-  { name: '맨손', weapon: null, armor: null, atk: 1, hp: 10, food: 'dried_meat' },
-  { name: '구리+가죽', weapon: 'copper_sword', armor: 'leather_armor', atk: 5, hp: 12, food: 'dried_meat' },
-  { name: '철', weapon: 'iron_sword', armor: 'iron_armor', atk: 12, hp: 15, food: 'cooked_herring' },
-  { name: '은+철갑', weapon: 'silver_sword', armor: 'iron_armor', atk: 20, hp: 22, food: 'cooked_salmon' },
-  { name: '미스릴', weapon: 'mithril_sword', armor: 'mithril_armor', atk: 32, hp: 32, food: 'cooked_tuna' },
-  { name: '아다만타이트', weapon: 'adamantite_sword', armor: 'adamantite_armor', atk: 42, hp: 40, food: 'cooked_swordfish' },
-  { name: '오리할콘', weapon: 'orichalcum_sword', armor: 'orichalcum_armor', atk: 52, hp: 50, food: 'cooked_shark' },
-];
+const wavesPerHour = 3_600_000 / WAVE_PERIOD_MS;
+const regenPerWave = (hpLevel) =>
+  Math.round((WAVE_PERIOD_MS / 60000) * hpLevel * REGEN_PER_MINUTE_PER_HP_LEVEL);
 
-/** 해당 음식을 만드는 요리 액션의 시간당 생산량 (요리 1슬롯 자급 한계) */
-function cookRatePerHour(foodId) {
-  for (const action of ACTIONS.values()) {
-    if (action.outputs.some((o) => o.itemId === foodId)) return 3_600_000 / action.durationMs;
+function buildState({ atk, hp, wall = 0, barracks = 0, weapon = null, armor = null }) {
+  const s = createInitialState(0);
+  s.skills.attack.xp = xpForLevel(atk);
+  s.skills.hitpoints.xp = xpForLevel(hp);
+  s.village.wallLevel = wall;
+  let placed = 0;
+  for (let i = 0; i < 9 && placed < barracks; i++) {
+    if (i === 4) continue; // 본부
+    s.village.buildings[i] = { id: 'barracks', damaged: false };
+    placed++;
   }
-  return Infinity; // 말린 고기 등 드랍 음식은 요리 생산 개념 없음
+  s.equipment.weapon = weapon;
+  s.equipment.armor = armor;
+  return s;
 }
 
-function lootGoldPerKill(monster) {
+function lootGoldPerWave(monsters) {
   let gold = 0;
-  for (const entry of monster.lootTable) {
-    gold += (ITEMS.get(entry.itemId)?.sellPrice ?? 0) * entry.qty * entry.chance;
+  for (const id of monsters) {
+    for (const entry of getMonster(id).lootTable) {
+      gold += (ITEMS.get(entry.itemId)?.sellPrice ?? 0) * entry.qty * entry.chance;
+    }
   }
   return gold;
 }
 
-for (const tier of TIERS) {
-  const weaponAtk = tier.weapon ? ITEMS.get(tier.weapon).equip.attack : 0;
-  const armorDef = tier.armor ? ITEMS.get(tier.armor).equip.defense : 0;
-  const stats = {
-    attackLevel: tier.atk,
-    hpLevel: tier.hp,
-    maxHp: tier.hp * 10,
-    attackPower: 1 + tier.atk + weaponAtk,
-    defense: armorDef,
-  };
-  const food = ITEMS.get(tier.food);
-  const cookRate = cookRatePerHour(tier.food);
-  console.log(
-    `  ◆ ${tier.name} (공격 Lv${tier.atk}, 체력 Lv${tier.hp}, 공격력 ${stats.attackPower}, ` +
-    `방어 ${stats.defense}, 음식: ${food.name} 회복 ${food.food.heal})`,
-  );
+// 진행 단계를 대표하는 마을 빌드들 (초반→후반)
+const BUILDS = [
+  { name: '새 마을', atk: 1, hp: 10, wall: 0, barracks: 0 },
+  { name: '성벽2+병영1', atk: 8, hp: 14, wall: 2, barracks: 1, weapon: 'copper_sword', armor: 'leather_armor' },
+  { name: '철 빌드', atk: 16, hp: 20, wall: 4, barracks: 2, weapon: 'iron_sword', armor: 'iron_armor' },
+  { name: '미스릴 빌드', atk: 32, hp: 32, wall: 6, barracks: 3, weapon: 'mithril_sword', armor: 'mithril_armor' },
+  { name: '엔드 빌드', atk: 52, hp: 50, wall: 10, barracks: 5, weapon: 'orichalcum_sword', armor: 'orichalcum_armor' },
+];
 
-  const rows = [];
-  for (const huntAction of HUNT_ACTIONS) {
-    const monster = getMonster(huntAction.combat.monsterId);
-    if (monster.levelRequired > tier.atk) continue; // 이 티어 시점엔 미해금
-    const cycleMs = timeToKillMs(stats, monster) + HUNT_DOWNTIME_MS;
-    const killsPerHour = 3_600_000 / cycleMs;
-    const dmg = damageTakenPerKill(stats, monster);
-    const xpPerHour = (monster.xp + hitpointsXpPerKill(dmg)) * killsPerHour;
-    const goldPerHour = lootGoldPerKill(monster) * killsPerHour;
-    const foodPerHour = (dmg * killsPerHour) / food.food.heal;
-    const dangerPct = (dmg / stats.maxHp) * 100;
-    const badge = dangerPct >= 25 ? '⛔위험' : dangerPct >= 8 ? '⚠️주의' : '✅안전';
-    rows.push({ monster, killsPerHour, xpPerHour, goldPerHour, foodPerHour, badge });
-  }
-  const bestXp = Math.max(...rows.map((r) => r.xpPerHour));
-  for (const r of rows) {
-    const marks =
-      (r.xpPerHour === bestXp ? ' ←최고XP' : '') +
-      (r.foodPerHour > cookRate ? ' (요리 초과)' : '');
+const stage1 = getStage(1);
+for (const build of BUILDS) {
+  const stats = computeVillageStats(buildState(build));
+  console.log(
+    `  ◆ ${build.name} (공Lv${build.atk}·체Lv${build.hp}·성벽${build.wall}·병영${build.barracks}` +
+    ` → 공격력 ${stats.attackPower}, 방어 ${stats.defense}, 최대HP ${stats.maxHp})`,
+  );
+  for (const tier of stage1.tiers) {
+    const gross = grossWaveDamage(stats, tier.monsters);
+    const regen = regenPerWave(stats.hpLevel);
+    const net = Number.isFinite(gross) ? Math.max(0, gross - regen) : Infinity;
+    const attackXp = tier.monsters.reduce((a, id) => a + getMonster(id).xp, 0) * tier.rewardMultiplier;
+    const hpXp = tier.monsters.reduce(
+      (a, id) => a + hitpointsXpPerKill(damageTakenPerKill(stats, getMonster(id))), 0,
+    ) * tier.rewardMultiplier;
+    const xpPerHour = Math.round((attackXp + hpXp) * wavesPerHour);
+    const goldPerHour = Math.round(lootGoldPerWave(tier.monsters) * wavesPerHour);
+    let hold;
+    if (net <= 0) hold = '✅안전(무한 방어)';
+    else {
+      const w = Math.floor((stats.maxHp - 1) / net);
+      hold = w <= 0 ? '⛔ 즉시 패배' : `⚠️ ${w}웨이브 (${fmt(w * WAVE_PERIOD_MS)})`;
+    }
     console.log(
-      `    ${r.monster.name.padEnd(8, ' ')} ${String(Math.round(r.killsPerHour)).padStart(4)}마리/h` +
-      ` · XP ${String(Math.round(r.xpPerHour)).padStart(6)}/h` +
-      ` · 🪙 ${String(Math.round(r.goldPerHour)).padStart(5)}/h` +
-      ` · 음식 ${r.foodPerHour.toFixed(1).padStart(6)}/h · ${r.badge}${marks}`,
+      `    T${tier.tier} ${tier.name.padEnd(8, ' ')} net ${String(net === Infinity ? '∞' : net).padStart(4)} ` +
+      `· XP ${String(xpPerHour).padStart(6)}/h · 🪙 ${String(goldPerHour).padStart(5)}/h · ${hold}`,
     );
   }
+}
+
+// ━━━ 성벽 강화 비용 곡선 ━━━
+console.log('\n▶ 성벽 강화 비용 (레벨별 누적 골드·자원)');
+for (let lv = 0; lv < 10; lv++) {
+  const cost = wallReinforceCost(lv);
+  if (!cost) break;
+  const items = cost.items.map((it) => `${ITEMS.get(it.itemId)?.name ?? it.itemId}×${it.qty}`).join(', ');
+  console.log(`  Lv${lv}→${lv + 1}: 🪙 ${cost.gold.toLocaleString()} + ${items}`);
+}
+
+// ━━━ 건물 정보 ━━━
+console.log('\n▶ 건물 (마을 스탯 기여 / 건설 비용)');
+for (const id of ['headquarters', 'barracks', 'rampart']) {
+  const b = getBuilding(id);
+  const cost = b.fixed
+    ? '시작 시 존재'
+    : `🪙 ${b.buildGold} + ${(b.buildItems ?? []).map((it) => `${ITEMS.get(it.itemId)?.name ?? it.itemId}×${it.qty}`).join(', ')}`;
+  console.log(`  ${b.icon} ${b.name}: HP+${b.hp} 공+${b.attack} 방+${b.defense} · ${cost}`);
 }

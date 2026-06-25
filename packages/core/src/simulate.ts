@@ -1,7 +1,5 @@
 import { effectiveCycleMs } from './buffs';
-import { grantXp, settleHunt } from './combat/hunt';
-import { computeStats, REGEN_PER_MINUTE_PER_HP_LEVEL } from './combat/stats';
-import { getMonster } from './data/monsters';
+import { grantXp, settleWaves } from './combat/village';
 import { getAction } from './data/skills';
 import { seededRolls } from './rng';
 import type { ActionId, ActiveAction, Gains, GameState, ItemId, SimResult } from './types';
@@ -11,6 +9,8 @@ export const DEFAULT_OFFLINE_CAP_MS = 12 * 60 * 60 * 1000;
 
 export interface SimulateOptions {
   maxOfflineMs?: number;
+  /** 오프라인 복귀 정산인가 — 웨이브 보상 50%, 파손은 정산당 최대 1회(농성이 보장) */
+  offline?: boolean;
 }
 
 function emptyGains(elapsedMs: number, discardedMs: number): Gains {
@@ -38,6 +38,7 @@ function emptyGains(elapsedMs: number, discardedMs: number): Gains {
  */
 export function simulate(state: GameState, now: number, opts?: SimulateOptions): SimResult {
   const cap = opts?.maxOfflineMs ?? DEFAULT_OFFLINE_CAP_MS;
+  const offline = opts?.offline ?? false;
   const rawElapsed = Math.max(0, now - state.lastTickAt);
   const elapsedMs = Math.min(rawElapsed, cap);
 
@@ -57,7 +58,7 @@ export function simulate(state: GameState, now: number, opts?: SimulateOptions):
       for (const buff of next.buffs) {
         if (buff.expiresAtMs > t && buff.expiresAtMs < boundary) boundary = buff.expiresAtMs;
       }
-      settleSpan(next, boundary - t, gains);
+      settleSpan(next, boundary - t, gains, offline);
       t = boundary;
       next.buffs = next.buffs.filter((b) => b.expiresAtMs > t);
     }
@@ -70,7 +71,7 @@ export function simulate(state: GameState, now: number, opts?: SimulateOptions):
 }
 
 /**
- * 다른 활성 작업이 해당 아이템을 공급하는가 (산출물·부산물·전투 전리품).
+ * 다른 활성 작업이 해당 아이템을 공급하는가 (산출물·부산물).
  * 활성 작업 목록만 보므로 틱 패턴과 무관하게 같은 판정이 나온다.
  * 소비 작업의 "재료 대기" 판정과 시작 허용 판정이 공유한다.
  */
@@ -80,36 +81,25 @@ export function activelySupplied(state: GameState, itemId: ItemId, exceptActionI
     const def = getAction(other.actionId);
     if (def.outputs.some((o) => o.itemId === itemId)) return true;
     if (def.byproducts?.some((b) => b.itemId === itemId)) return true;
-    if (def.combat && getMonster(def.combat.monsterId).lootTable.some((l) => l.itemId === itemId)) {
-      return true;
-    }
   }
   return false;
 }
 
 /**
- * 고정된 버프 셋 아래에서 spanMs만큼 모든 작업을 정산한다. state를 직접 변형.
+ * 고정된 버프 셋 아래에서 spanMs만큼 모든 작업 + 웨이브 방어를 정산한다. state를 직접 변형.
  *
  * 동시 작업은 슬롯 배열 순서대로 순차 정산한다. 한 정산 구간 안에서
  * 생산 작업의 산출물을 뒤 순서의 소비 작업이 쓸 수 있다는 단순화가 있지만,
  * 실시간(200ms 틱)에서는 오차가 무시할 수준이고 오프라인 정산에서도
  * 슬롯 순서가 고정이므로 결정성은 유지된다.
+ *
+ * 웨이브 방어는 작업 슬롯과 무관하게 상시 자동으로 돌아간다(settleWaves).
  */
-function settleSpan(next: GameState, spanMs: number, gains: Gains): void {
+function settleSpan(next: GameState, spanMs: number, gains: Gains, offline: boolean): void {
   const stillActive: ActiveAction[] = [];
-  let combatActive = false;
 
   for (const active of next.activeActions) {
     const action = getAction(active.actionId);
-
-    if (action.combat) {
-      const keep = settleHunt(next, active, action, spanMs, gains);
-      if (keep) {
-        stillActive.push(active);
-        combatActive = true;
-      }
-      continue;
-    }
 
     const cycleMs = effectiveCycleMs(action, next);
     const budgetMs = active.progressMs + spanMs;
@@ -184,12 +174,6 @@ function settleSpan(next: GameState, spanMs: number, gains: Gains): void {
 
   next.activeActions = stillActive;
 
-  // 비전투 시 HP 자연 회복: 분당 체력 레벨만큼
-  if (!combatActive) {
-    const stats = computeStats(next);
-    next.hp = Math.min(
-      stats.maxHp,
-      next.hp + (spanMs / 60_000) * stats.hpLevel * REGEN_PER_MINUTE_PER_HP_LEVEL,
-    );
-  }
+  // 웨이브 방어 (상시 자동 — 작업 슬롯과 무관)
+  settleWaves(next, spanMs, gains, offline);
 }

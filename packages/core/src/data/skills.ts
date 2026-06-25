@@ -1,4 +1,3 @@
-import { HUNT_ACTIONS } from './monsters';
 import type { ActionDef, ActionId, SkillDef, SkillId } from '../types';
 
 export const SKILLS: SkillDef[] = [
@@ -84,7 +83,7 @@ const gatheringAndCrafting: ActionDef[] = [
   { id: 'sm_orichalcum_armor', skillId: 'smithing', name: '오리할콘 갑옷 제작', icon: '👘', levelRequired: 66, durationMs: 7500, xp: 260, inputs: [{ itemId: 'orichalcum_bar', qty: 3 }, { itemId: 'wyvern_scale', qty: 3 }, { itemId: 'ancient_log', qty: 1 }], outputs: [{ itemId: 'orichalcum_armor', qty: 1 }] },
 ];
 
-const list: ActionDef[] = [...gatheringAndCrafting, ...HUNT_ACTIONS];
+const list: ActionDef[] = gatheringAndCrafting;
 
 export const ACTIONS: ReadonlyMap<ActionId, ActionDef> = new Map(list.map((a) => [a.id, a]));
 

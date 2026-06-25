@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { effectiveCycleMs, combatBuffMultipliers } from './buffs';
-import { computeStats } from './combat/stats';
+import { computeVillageStats } from './combat/village';
 import { buyUpgrade, drinkPotion, setCombatFood, startAction } from './commands';
 import { ITEMS, getItem } from './data/items';
 import { ACTIONS, getAction } from './data/skills';
@@ -50,9 +50,9 @@ describe('물약과 버프', () => {
     expect(effectiveCycleMs(getAction('mi_copper'), buffed)).toBe(3000); // 영향 없음
   });
 
-  it('전투 물약은 computeStats에 곱연산으로 반영된다', () => {
-    const base = computeStats(stateWith());
-    const buffed = computeStats(
+  it('전투 물약은 computeVillageStats에 곱연산으로 반영된다', () => {
+    const base = computeVillageStats(stateWith());
+    const buffed = computeVillageStats(
       stateWith({
         buffs: [{ itemId: 'potion_attack', category: 'combat', expiresAtMs: T0 + MIN30 }],
       }),
@@ -85,7 +85,7 @@ describe('물약과 버프', () => {
 
   it('버프 만료를 가로지르는 실시간 틱 누적과 오프라인 일괄 정산이 완전히 같다', () => {
     const base = stateWith({
-      hp: 100, // 최대 HP — 자연 회복이 클램프되어 부동소수점 누적 차이가 없다
+      // 마을 HP는 정수이며 이 구간엔 웨이브가 발생하지 않아(주기 3분) 채집 정산만 비교된다
       buffs: [{ itemId: 'potion_woodcutting', category: 'gathering', expiresAtMs: T0 + 30_000 }],
     });
     const s0 = startAction(base, 'wc_normal').state;
@@ -114,7 +114,7 @@ describe('약초 부산물', () => {
   });
 
   it('부산물도 틱 누적과 오프라인 정산이 같은 결과를 낸다', () => {
-    const s0 = startAction(stateWith({ hp: 100 }), 'mi_copper').state;
+    const s0 = startAction(stateWith(), 'mi_copper').state;
     const end = T0 + 120_000;
 
     const offline = simulate(s0, end).state;
@@ -238,7 +238,9 @@ describe('경제 순환 검증 (Phase 3 DoD: 팔기만 하는 아이템 없음)'
     }
     for (const dungeon of DUNGEONS.values()) {
       for (const id of dungeon.monsters) expect(MONSTERS.has(id)).toBe(true);
-      for (const entry of dungeon.rewards) expect(ITEMS.has(entry.itemId)).toBe(true);
+      for (const entry of [...dungeon.firstRewards, ...dungeon.repeatRewards]) {
+        expect(ITEMS.has(entry.itemId)).toBe(true);
+      }
     }
     for (const upgrade of UPGRADES) {
       expect(upgrade.stages.length).toBeGreaterThan(0);

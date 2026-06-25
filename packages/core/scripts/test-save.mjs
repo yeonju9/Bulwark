@@ -1,10 +1,10 @@
 // 개발용 테스트 세이브 생성기. 출력된 JSON을 게임의 설정 → 세이브 가져오기에 붙여넣는다.
-// 실행: node scripts/test-save.mjs [stage]   (stage: wolf | goblin | orc | economy, 기본 wolf)
+// 실행: node scripts/test-save.mjs [stage]   (stage: wolf | goblin | orc | economy | defense, 기본 wolf)
 // 주의: 코어 빌드(dist) 기준이므로 데이터 변경 후에는 npm run build 먼저.
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createInitialState, xpForLevel } = require('../dist/index.js');
+const { createInitialState, computeVillageStats, xpForLevel } = require('../dist/index.js');
 
 const stage = process.argv[2] ?? 'wolf';
 
@@ -54,10 +54,14 @@ const skillIds = ['attack', 'hitpoints', 'smithing', 'woodcutting', 'mining', 'f
 for (const skill of skillIds) {
   if (preset[skill] !== undefined) state.skills[skill].xp = xpForLevel(preset[skill]);
 }
-state.hp = preset.hitpoints * 10;
 state.equipment = preset.equipment;
 state.combatFood = 'dried_meat';
 state.inventory = preset.inventory;
 state.gold = preset.gold;
+// 마을 방어 테스트용: 일부 던전을 클리어한 것으로 쳐 상위 웨이브 티어를 해금하고, 마을을 가득 채운다
+if (preset.dungeonClears) state.dungeonClears = preset.dungeonClears;
+if (preset.wallLevel) state.village.wallLevel = preset.wallLevel;
+if (preset.waveTier) state.waveTier = preset.waveTier;
+state.village.hp = computeVillageStats(state).maxHp;
 
 console.log(JSON.stringify(state));

@@ -1,10 +1,13 @@
+import { computeVillageStats } from './combat/village';
+import { BUILDINGS, repairCost, wallReinforceCost } from './data/buildings';
 import { getItem, ITEMS } from './data/items';
 import { ACTIONS } from './data/skills';
+import { unlockedTier } from './data/stages';
 import { getUpgrade } from './data/upgrades';
 import { activelySupplied } from './simulate';
 import { unlockedActionSlots } from './slots';
 import { levelFromXp } from './xp';
-import type { ActionId, EquipSlot, GameState, ItemId, SkillId } from './types';
+import type { ActionId, BuildingId, EquipSlot, GameState, ItemId, ItemStack, SkillId } from './types';
 
 export type CommandError =
   | 'unknown-action'
@@ -17,7 +20,14 @@ export type CommandError =
   | 'not-potion'
   | 'unknown-upgrade'
   | 'max-stage'
-  | 'not-enough-gold';
+  | 'not-enough-gold'
+  | 'unknown-building'
+  | 'not-buildable'
+  | 'invalid-cell'
+  | 'cell-occupied'
+  | 'not-damaged'
+  | 'max-wall'
+  | 'tier-locked';
 
 export interface CommandResult {
   state: GameState;
@@ -170,5 +180,93 @@ export function sellItem(state: GameState, itemId: ItemId, qty: number | 'all'):
   if (left > 0) next.inventory[itemId] = left;
   else delete next.inventory[itemId];
   next.gold += getItem(itemId).sellPrice * amount;
+  return { state: next };
+}
+
+// ─── 마을 방어 커맨드 ───
+// 건설·강화·수리는 모두 농성을 해제하고, 농성 중이었다면 마을을 가득 채운 채 방어를 재개한다.
+
+/** 보유 골드·자원이 비용을 감당하는지 검사 */
+function canAfford(state: GameState, gold: number, items: ItemStack[]): CommandError | null {
+  if (state.gold < gold) return 'not-enough-gold';
+  for (const it of items) {
+    if ((state.inventory[it.itemId] ?? 0) < it.qty) return 'missing-materials';
+  }
+  return null;
+}
+
+/** 비용 차감 (검사는 호출 측에서 끝낸 전제) */
+function payCost(state: GameState, gold: number, items: ItemStack[]): void {
+  state.gold -= gold;
+  for (const it of items) {
+    const left = (state.inventory[it.itemId] ?? 0) - it.qty;
+    if (left > 0) state.inventory[it.itemId] = left;
+    else delete state.inventory[it.itemId];
+  }
+}
+
+/** 농성 해제: 마을을 가득 채우고 방어를 재개한다 (수리/강화/건설 성공 시) */
+function liftSiege(state: GameState): void {
+  if (!state.village.underSiege) return;
+  state.village.underSiege = false;
+  state.village.waveProgressMs = 0;
+  state.village.hp = computeVillageStats(state).maxHp;
+}
+
+/** 빈 터(cellIndex)에 건물을 건설. 같은 건물 중복 건설 가능 */
+export function buildBuilding(state: GameState, cellIndex: number, buildingId: BuildingId): CommandResult {
+  const def = BUILDINGS.get(buildingId);
+  if (!def) return { state, error: 'unknown-building' };
+  if (def.fixed) return { state, error: 'not-buildable' };
+  if (cellIndex < 0 || cellIndex >= state.village.buildings.length) return { state, error: 'invalid-cell' };
+  if (state.village.buildings[cellIndex] !== null) return { state, error: 'cell-occupied' };
+
+  const err = canAfford(state, def.buildGold ?? 0, def.buildItems ?? []);
+  if (err) return { state, error: err };
+
+  const next = structuredClone(state);
+  payCost(next, def.buildGold ?? 0, def.buildItems ?? []);
+  next.village.buildings[cellIndex] = { id: buildingId, damaged: false };
+  liftSiege(next);
+  return { state: next };
+}
+
+/** 파손된 건물 수리 (효과 재개) */
+export function repairBuilding(state: GameState, cellIndex: number): CommandResult {
+  const slot = state.village.buildings[cellIndex];
+  if (!slot) return { state, error: 'invalid-cell' };
+  if (!slot.damaged) return { state, error: 'not-damaged' };
+
+  const cost = repairCost(slot.id);
+  const err = canAfford(state, cost.gold, cost.items);
+  if (err) return { state, error: err };
+
+  const next = structuredClone(state);
+  payCost(next, cost.gold, cost.items);
+  next.village.buildings[cellIndex]!.damaged = false;
+  liftSiege(next);
+  return { state: next };
+}
+
+/** 성벽 외곽 링 강화 (레벨 +1 → 최대 HP·방어력 상승). 패배 시 가장 먼저 무너지는 구조물 */
+export function reinforceWall(state: GameState): CommandResult {
+  const cost = wallReinforceCost(state.village.wallLevel);
+  if (!cost) return { state, error: 'max-wall' };
+
+  const err = canAfford(state, cost.gold, cost.items);
+  if (err) return { state, error: err };
+
+  const next = structuredClone(state);
+  payCost(next, cost.gold, cost.items);
+  next.village.wallLevel += 1;
+  liftSiege(next);
+  return { state: next };
+}
+
+/** 웨이브 난이도(티어) 선택. 해금 범위 안에서만 가능 (난이도 ∝ 보상) */
+export function selectWaveTier(state: GameState, tier: number): CommandResult {
+  if (tier < 1 || tier > unlockedTier(state)) return { state, error: 'tier-locked' };
+  const next = structuredClone(state);
+  next.waveTier = tier;
   return { state: next };
 }

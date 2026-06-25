@@ -167,7 +167,7 @@ describe('세이브 마이그레이션', () => {
     expect(migrated!.activeActions).toEqual([
       { skillId: 'woodcutting', actionId: 'wc_normal', progressMs: 500 },
     ]);
-    expect((migrated as Record<string, unknown>)['activeAction']).toBeUndefined();
+    expect((migrated as unknown as Record<string, unknown>)['activeAction']).toBeUndefined();
   });
 
   it('알 수 없는 버전이나 손상된 데이터는 거부한다', () => {
