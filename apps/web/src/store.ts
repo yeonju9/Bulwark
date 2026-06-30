@@ -40,11 +40,21 @@ export interface Toast {
   message: string;
 }
 
+/** 침공 중 실제 발생한 피해 1건 (코어 SiegeHit + UI용 고유 id). 화면 표시 = 실제 HP 피해와 1:1 */
+export interface SiegeFloatingHit {
+  id: number;
+  kind: 'incoming' | 'outgoing';
+  monsterId: string;
+  amount: number;
+}
+
 interface GameStore {
   game: GameState;
   offline: Gains | null;
   panel: Panel;
   toasts: Toast[];
+  /** 침공 중 실제 발생한 피해 숫자 피드 (맵 연출용, 상한 유지) */
+  siegeHits: SiegeFloatingHit[];
   dungeonResult: DungeonResult | null;
   setPanel(panel: Panel): void;
   tick(): void;
@@ -73,7 +83,11 @@ interface GameStore {
 const OFFLINE_MODAL_THRESHOLD_MS = 60_000;
 const TOAST_DURATION_MS = 3500;
 const MAX_TOASTS = 4;
+const MAX_SIEGE_HITS = 16;
+/** 플로팅 데미지 숫자 수명 (CSS 애니메이션 길이보다 약간 김). 지나면 제거해 마운트 시 재생 안 되게 */
+const SIEGE_HIT_TTL_MS = 1300;
 let toastSeq = 0;
+let siegeHitSeq = 0;
 
 export function stoppedActionText(stopped: StoppedAction): string {
   const name = getAction(stopped.actionId).name;
@@ -120,15 +134,17 @@ function toastMessages(prev: GameState, next: GameState, gains: Gains): string[]
           : '';
     messages.push(`🛡️ 마을이 함락되어 농성에 들어갔습니다!${what} 수리·강화로 방어를 재개하세요`);
   } else if (gains.wave && gains.wave.wavesWon > 0) {
-    // 막아낸 웨이브 — 번호 + 보상 요약 (패배 시엔 농성 메시지로 대체)
+    // 막아낸 웨이브 — 번호 + 침공 요약(처치·피해·보상). 패배 시엔 농성 메시지로 대체
     const n = next.village.wavesProcessed;
-    const reward = [
+    const parts = [
+      gains.wave.monstersDefeated > 0 ? `⚔️ ${gains.wave.monstersDefeated}처치` : '',
+      gains.wave.damageTaken > 0 ? `💥 피해 ${Math.round(gains.wave.damageTaken)}` : '',
       gains.wave.goldWon > 0 ? `🪙 ${gains.wave.goldWon}` : '',
       gains.wave.xpWon > 0 ? `+${gains.wave.xpWon} XP` : '',
     ]
       .filter(Boolean)
       .join(' · ');
-    messages.push(`🛡️ 웨이브 #${n} 격퇴!${reward ? ` ${reward}` : ''}`);
+    messages.push(`🛡️ 웨이브 #${n} 격퇴!${parts ? ` ${parts}` : ''}`);
   }
 
   for (const stopped of gains.stopped) {
@@ -142,6 +158,7 @@ export const useGame = create<GameStore>((set, get) => ({
   ...bootstrap(),
   panel: 'map',
   toasts: [],
+  siegeHits: [],
   dungeonResult: null,
 
   setPanel: (panel) => set({ panel }),
@@ -150,6 +167,18 @@ export const useGame = create<GameStore>((set, get) => ({
     const prev = get().game;
     const { state, gains } = simulate(prev, Date.now());
     set({ game: state });
+    // 실제 발생한 피해(코어 이벤트)만 플로팅 숫자 피드에 추가 → 화면 표시 = 실제 HP 피해와 1:1
+    const hits = gains.siegeHits;
+    if (hits && hits.length > 0) {
+      const added = hits.map((h) => ({ ...h, id: ++siegeHitSeq }));
+      set((s) => ({ siegeHits: [...s.siegeHits, ...added].slice(-MAX_SIEGE_HITS) }));
+      // 애니메이션이 끝나면 제거 → 맵으로 (재)진입/침공 시작 시 옛 숫자가 한꺼번에 다시 뜨지 않음
+      for (const h of added) {
+        setTimeout(() => {
+          set((s) => ({ siegeHits: s.siegeHits.filter((x) => x.id !== h.id) }));
+        }, SIEGE_HIT_TTL_MS);
+      }
+    }
     // 오프라인 정산 모달이 떠 있는 동안은 토스트 억제 (모달이 같은 내용을 보여줌)
     if (!get().offline) {
       for (const message of toastMessages(prev, state, gains)) {
@@ -270,7 +299,7 @@ export const useGame = create<GameStore>((set, get) => ({
 
   importGame: (imported) => {
     const { state } = simulate(imported, Date.now());
-    set({ game: state, offline: null });
+    set({ game: state, offline: null, siegeHits: [] });
     persistSave(state);
     get().pushToast('💾 세이브를 불러왔습니다');
   },
@@ -278,7 +307,7 @@ export const useGame = create<GameStore>((set, get) => ({
   resetGame: () => {
     clearSave();
     const fresh = createInitialState(Date.now());
-    set({ game: fresh, offline: null, panel: 'map' });
+    set({ game: fresh, offline: null, panel: 'map', siegeHits: [] });
     persistSave(fresh);
     get().pushToast('🔄 진행이 초기화되었습니다');
   },

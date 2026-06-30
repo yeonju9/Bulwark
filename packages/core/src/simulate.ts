@@ -1,5 +1,5 @@
 import { effectiveCycleMs } from './buffs';
-import { grantXp, settleWaves } from './combat/village';
+import { grantXp, settleSiege } from './combat/village';
 import { getAction } from './data/skills';
 import { seededRolls } from './rng';
 import type { ActionId, ActiveAction, Gains, GameState, ItemId, SimResult } from './types';
@@ -174,6 +174,6 @@ function settleSpan(next: GameState, spanMs: number, gains: Gains, offline: bool
 
   next.activeActions = stillActive;
 
-  // 웨이브 방어 (상시 자동 — 작업 슬롯과 무관)
-  settleWaves(next, spanMs, gains, offline);
+  // 실시간 공성 (상시 자동 — 작업 슬롯과 무관)
+  settleSiege(next, spanMs, gains, offline);
 }

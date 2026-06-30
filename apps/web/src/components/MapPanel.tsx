@@ -4,28 +4,26 @@ import {
   computeVillageStats,
   currentStage,
   currentTier,
+  estimateInvasion,
   getBuilding,
   getItem,
   getMonster,
-  grossWaveDamage,
   MAX_WALL_LEVEL,
-  REGEN_PER_MINUTE_PER_HP_LEVEL,
   repairCost,
   unlockedTier,
   wallReinforceCost,
   wallStats,
-  WAVE_PERIOD_MS,
   type BuildingId,
   type DungeonId,
   type EquipSlot,
   type ItemId,
   type MonsterId,
 } from '@idle-rpg/core';
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { formatNumber } from '../format';
 import { iconUrl } from '../icons';
-import { useGame } from '../store';
-import { useWaveInvasion, useWavePulse, type Invasion } from '../useWavePulse';
+import { useGame, type SiegeFloatingHit } from '../store';
+import { useInvasionPhase, useWavePulse } from '../useWavePulse';
 import { GameIcon } from './GameIcon';
 
 const SLOT_LABEL: Record<EquipSlot, string> = { weapon: '무기', armor: '방어구' };
@@ -174,7 +172,8 @@ export function MapPanel() {
 
   const [sel, setSel] = useState<Selection>({ kind: 'none' });
   const wavePulse = useWavePulse();
-  const invasion = useWaveInvasion();
+  const phase = useInvasionPhase();
+  const siegeHits = useGame((s) => s.siegeHits);
 
   const v = game.village;
   const stats = computeVillageStats(game);
@@ -194,16 +193,21 @@ export function MapPanel() {
       <div className="map-screen">
         {/* 웨이브 배너 */}
         <div
-          className={`wave-banner ${sel.kind === 'wave' ? 'sel' : ''} ${wavePulse ? 'flash' : ''}`}
+          className={`wave-banner ${sel.kind === 'wave' ? 'sel' : ''} ${wavePulse ? 'flash' : ''} ${phase.invading ? 'invading' : ''}`}
           onClick={() => setSel({ kind: 'wave' })}
         >
           <span className="wb-icon">🌊</span>
           {v.underSiege ? (
             <span className="wb-title">마을 농성 중 — 수리·강화로 방어 재개</span>
+          ) : phase.invading ? (
+            <span className="wb-title wb-invading">
+              ⚔️ 웨이브 #{v.wavesProcessed + 1} 침공 중! 격퇴까지{' '}
+              <span className="wb-timer">{timerText(phase.remainingMs)}</span>
+            </span>
           ) : (
             <span className="wb-title">
               웨이브 #{v.wavesProcessed + 1} 침공까지{' '}
-              <span className="wb-timer">{timerText(WAVE_PERIOD_MS - v.waveProgressMs)}</span>
+              <span className="wb-timer">{timerText(phase.remainingMs)}</span>
             </span>
           )}
           <span className="wb-spacer" />
@@ -228,6 +232,20 @@ export function MapPanel() {
           ) : (
             <span className="wb-mult">보상 ×{tier.rewardMultiplier}</span>
           )}
+        </div>
+
+        {/* 마을 HP 바 — 침공 중 실시간으로 깎이는 게 보인다 */}
+        <div
+          className={`village-hp-bar ${phase.invading ? 'under-attack' : ''} ${v.underSiege ? 'sieged' : ''}`}
+          title="마을 HP — 침공 중 몬스터 타격마다 깎이고, 잔잔 구간에 자연 회복됩니다"
+        >
+          <span
+            className="vhp-fill"
+            style={{ width: `${Math.max(0, Math.min(100, (v.hp / Math.max(1, stats.maxHp)) * 100))}%` }}
+          />
+          <span className="vhp-label">
+            {v.underSiege ? '🛡️' : '❤️'} 마을 HP {Math.floor(v.hp)} / {stats.maxHp}
+          </span>
         </div>
 
         {/* 맵 프레임 */}
@@ -346,8 +364,10 @@ export function MapPanel() {
             </div>
           </div>
 
-          {/* 침공 애니메이션 — 웨이브 발동 시 몬스터가 마을로 돌격 */}
-          {invasion && <InvasionLayer invasion={invasion} monsters={tier.monsters} />}
+          {/* 실시간 침공 — 몬스터들이 천천히 다가오고, 코어의 실제 피해만 데미지 숫자로 뜬다 */}
+          {phase.invading && !v.underSiege && (
+            <InvasionLayer monsters={tier.monsters} hits={siegeHits} />
+          )}
 
           <div className="atmo">
             <div className="sun" />
@@ -459,29 +479,92 @@ export function MapPanel() {
   );
 }
 
-/** 침공 애니메이션 레이어 — 티어 몬스터들이 가장자리에서 마을 중앙으로 돌격(막히면 튕김/뚫리면 관통) */
-function InvasionLayer({ invasion, monsters }: { invasion: Invasion; monsters: readonly MonsterId[] }) {
-  // 각 몬스터를 여러 마리로 복제해 떼처럼 보이게 (최대 12)
-  const HORDE = 3;
-  const horde = monsters.flatMap((id) => Array<MonsterId>(HORDE).fill(id)).slice(0, 12);
+/** 한 침공 몬스터의 진입 경로(가장자리 스폰 → 마을 벽). 매 진입마다 랜덤하게 다시 뽑는다. */
+function randomPath(): { sx: number; sy: number; ex: number; ey: number } {
+  const ang = Math.random() * Math.PI * 2;
+  const r0 = 45 + Math.random() * 8; // 가장자리(랜덤)
+  const r1 = 12 + Math.random() * 5; // 마을 벽 근처(랜덤)
+  return {
+    sx: 50 + Math.cos(ang) * r0,
+    sy: 50 + Math.sin(ang) * r0,
+    ex: 50 + Math.cos(ang) * r1,
+    ey: 50 + Math.sin(ang) * r1,
+  };
+}
+
+/**
+ * 침공 몬스터 한 마리 — 랜덤 위치에서 자기 속도(dur)로 마을을 향해 **천천히** 다가온다(위협적).
+ * 마을 벽에 닿으면 그 자리에서 사라지고, 보이지 않게 새 랜덤 위치로 리셋해 다시 다가온다.
+ * (데미지 숫자는 몬스터가 아니라 코어의 실제 피해 이벤트로만 뜬다 — InvasionLayer에서 처리)
+ */
+function Attacker({ monsterId, dur, delay }: { monsterId: MonsterId; dur: number; delay: number }) {
+  const [path, setPath] = useState(randomPath);
+  const style = {
+    '--sx': `${path.sx}%`,
+    '--sy': `${path.sy}%`,
+    '--ex': `${path.ex}%`,
+    '--ey': `${path.ey}%`,
+    animationDuration: `${dur}s`,
+    animationDelay: `${delay}s`,
+  } as CSSProperties;
   return (
-    <div className="invasion-layer" key={invasion.key}>
-      {horde.map((id, i) => {
-        const ang = ((-90 + (360 / horde.length) * i) * Math.PI) / 180;
-        const style = {
-          '--sx': `${50 + Math.cos(ang) * 44}%`,
-          '--sy': `${50 + Math.sin(ang) * 44}%`,
-          '--mx': `${50 + Math.cos(ang) * 13}%`,
-          '--my': `${50 + Math.sin(ang) * 13}%`,
-          animationDelay: `${(i % 4) * 0.05}s`,
-        } as CSSProperties;
+    <span
+      className="attacker"
+      style={style}
+      onAnimationIteration={(e) => {
+        // 한 바퀴(진입→소멸) 끝나는 순간(화면 밖) 새 랜덤 경로로 — 매번 다른 위치에서 등장
+        if (e.target === e.currentTarget) setPath(randomPath());
+      }}
+    >
+      <GameIcon id={monsterId} emoji={getMonster(monsterId).icon} size={34} />
+    </span>
+  );
+}
+
+/**
+ * 실시간 침공 레이어 — 소수(4)의 몬스터가 제각기 랜덤 위치·속도로 마을을 향해 **천천히** 다가온다(시차 등장).
+ * 데미지 숫자는 **코어의 실제 피해 이벤트(hits)만** 마을 벽 근처에 띄운다 → 화면 표시 = 실제 마을 HP 피해와 1:1.
+ */
+function InvasionLayer({
+  monsters,
+  hits,
+}: {
+  monsters: readonly MonsterId[];
+  hits: SiegeFloatingHit[];
+}) {
+  const COUNT = 4;
+  // 마운트 시 각 몬스터의 종류·속도·시작 지연을 랜덤 고정 (양수 지연 → 한꺼번에 안 나오고 시차 등장)
+  const lineup = useMemo(
+    () =>
+      Array.from({ length: COUNT }, (_, i) => ({
+        key: i,
+        monsterId: monsters[i % monsters.length],
+        dur: 9 + Math.random() * 4, // 9~13s — 천천히
+        delay: i * 2.4, // 시차 등장
+      })),
+    [monsters],
+  );
+
+  return (
+    <div className="invasion-layer">
+      {lineup.map((a) => (
+        <Attacker key={a.key} monsterId={a.monsterId} dur={a.dur} delay={a.delay} />
+      ))}
+      {hits.map((h) => {
+        // 실제 피해 1건 = 숫자 1개. 마을 벽 둘레의 (시드 기반) 한 지점에서 솟구침
+        const seed = (h.id * 2654435761) >>> 0;
+        const ang = ((seed % 360) * Math.PI) / 180;
+        const r = 13 + (seed % 7);
         return (
-          <span key={i} className={`invader ${invasion.breached ? 'breached' : ''}`} style={style}>
-            <GameIcon id={id} emoji={getMonster(id).icon} size={36} />
+          <span
+            key={h.id}
+            className="hit-dmg"
+            style={{ left: `${50 + Math.cos(ang) * r}%`, top: `${50 + Math.sin(ang) * r}%` }}
+          >
+            -{h.amount}
           </span>
         );
       })}
-      <span className={`invasion-impact ${invasion.breached ? 'breached' : ''}`} />
     </div>
   );
 }
@@ -514,25 +597,33 @@ function DetailContent({
   const v = game.village;
 
   if (sel.kind === 'wave') {
-    const gross = grossWaveDamage(stats, tier.monsters);
-    const regen = Math.round((WAVE_PERIOD_MS / 60_000) * stats.hpLevel * REGEN_PER_MINUTE_PER_HP_LEVEL);
-    const net = Number.isFinite(gross) ? Math.max(0, gross - regen) : Infinity;
-    const safe = net <= 0;
-    const holdWaves = safe ? Infinity : Math.floor((stats.maxHp - 1) / net);
+    const est = estimateInvasion(stats, tier.monsters);
+    const safe = Number.isFinite(est.net) && est.net <= 0;
+    const holdWaves =
+      safe || !Number.isFinite(est.net) ? Infinity : est.net > 0 ? Math.floor((stats.maxHp - 1) / est.net) : Infinity;
     return (
       <>
         <h3>🌊 웨이브 침공 — {tier.name}</h3>
         <p className="dim">
-          주기마다 자동 침공 · 작업 슬롯 미차지 · 마을 스탯으로 자동 방어. 마을 HP가 버티는 한 전리품과
-          경험치를 얻고, 버티지 못하면 구조물이 무너지고 농성에 들어갑니다. (오프라인 보상 50%)
+          주기마다 약 2분간 몬스터가 몰려옵니다. 마을이 자동으로 한 마리씩 처치하며, 처치 사이에 받는
+          피해로 HP가 실시간으로 깎입니다. HP가 바닥나면 구조물이 무너지고 농성에 들어갑니다. (오프라인 보상 50%)
         </p>
         <div className="chips">
           {tier.monsters.map((id, i) => (
             <span key={i} className="chip"><GameIcon id={id} emoji={getMonster(id).icon} /> {getMonster(id).name}</span>
           ))}
           <span className="chip big">보상 ×{tier.rewardMultiplier}</span>
+        </div>
+        <div className="chips">
+          <span className="chip">침공당 ~{Number.isFinite(est.kills) ? est.kills : 0}처치</span>
+          <span className="chip">예상 피해 {Number.isFinite(est.damage) ? est.damage : '∞'}</span>
+          <span className="chip">회복 +{est.regen}</span>
           <span className={`chip ${safe ? 'big' : 'bad'}`}>
-            {safe ? '✅ 안전 (무한 방어)' : holdWaves <= 0 ? '⛔ 즉시 패배' : `⚠️ 약 ${holdWaves}웨이브 버팀`}
+            {safe
+              ? '✅ 안전 (회복 ≥ 피해)'
+              : !Number.isFinite(est.net)
+                ? '⛔ 처치 불가 — 즉시 함락'
+                : `⚠️ 약 ${holdWaves}회 버팀`}
           </span>
         </div>
       </>

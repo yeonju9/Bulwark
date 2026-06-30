@@ -1,5 +1,29 @@
+import { CALM_DURATION_MS, INVASION_DURATION_MS, WAVE_PERIOD_MS } from '@idle-rpg/core';
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from './store';
+
+export interface InvasionPhase {
+  /** 침공(실시간 전투) 구간인가 */
+  invading: boolean;
+  /** 현재 단계가 끝날 때까지 남은 시간(ms) — 침공이면 격퇴까지, 잔잔이면 다음 침공까지 */
+  remainingMs: number;
+  /** 현재 단계 진행도 0~1 */
+  progress: number;
+}
+
+/**
+ * 주기 진행도(waveProgressMs)로 현재가 잔잔/침공 어느 단계인지 + 남은 시간을 계산한다.
+ * 매 틱(200ms) waveProgressMs가 갱신되므로 카운트다운이 부드럽게 움직인다.
+ */
+export function useInvasionPhase(): InvasionPhase {
+  const waveProgressMs = useGame((s) => s.game.village.waveProgressMs);
+  const invading = waveProgressMs >= CALM_DURATION_MS;
+  if (invading) {
+    const into = waveProgressMs - CALM_DURATION_MS;
+    return { invading: true, remainingMs: WAVE_PERIOD_MS - waveProgressMs, progress: into / INVASION_DURATION_MS };
+  }
+  return { invading: false, remainingMs: CALM_DURATION_MS - waveProgressMs, progress: waveProgressMs / CALM_DURATION_MS };
+}
 
 /**
  * 웨이브를 막아낼 때마다(= village.wavesProcessed 증가) 잠깐 true가 되는 펄스.
@@ -22,40 +46,4 @@ export function useWavePulse(durationMs = 700): boolean {
   }, [wavesProcessed, durationMs]);
 
   return pulse;
-}
-
-export interface Invasion {
-  /** 애니메이션 리마운트용 단조 증가 키 (매 침공마다 +1) */
-  key: number;
-  /** 이번 침공으로 마을이 뚫렸는가(농성 진입) — 돌파 연출로 분기 */
-  breached: boolean;
-}
-
-/**
- * 웨이브가 발동할 때마다 잠깐 동안 활성화되는 침공 인스턴스. 몬스터 돌격 애니메이션 트리거.
- * 막아낸 웨이브(wavesProcessed 증가)뿐 아니라 첫 웨이브에 바로 함락(농성 진입)되는 경우도
- * 잡는다 — 후자는 wavesProcessed가 안 오르므로 underSiege 전환(false→true)으로 감지.
- */
-export function useWaveInvasion(durationMs = 2800): Invasion | null {
-  const wavesProcessed = useGame((s) => s.game.village.wavesProcessed);
-  const underSiege = useGame((s) => s.game.village.underSiege);
-  const prevW = useRef(wavesProcessed);
-  const prevS = useRef(underSiege);
-  const seq = useRef(0);
-  const [invasion, setInvasion] = useState<Invasion | null>(null);
-
-  useEffect(() => {
-    const wonWave = wavesProcessed > prevW.current;
-    const justBreached = underSiege && !prevS.current;
-    prevW.current = wavesProcessed;
-    prevS.current = underSiege;
-    if (wonWave || justBreached) {
-      seq.current += 1;
-      setInvasion({ key: seq.current, breached: underSiege });
-      const id = setTimeout(() => setInvasion(null), durationMs);
-      return () => clearTimeout(id);
-    }
-  }, [wavesProcessed, underSiege, durationMs]);
-
-  return invasion;
 }

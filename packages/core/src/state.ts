@@ -3,7 +3,7 @@ import { initialBuildings } from './data/buildings';
 import { xpForLevel } from './xp';
 import type { ActiveAction, GameState, Village } from './types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** 체력 스킬 시작 레벨 (마을 최대 HP에 레벨당 10 기여 → 시작 시 본부와 합산) */
 export const STARTING_HITPOINTS_LEVEL = 10;
@@ -34,6 +34,8 @@ export function createInitialState(now: number): GameState {
       underSiege: false,
       waveProgressMs: 0,
       wavesProcessed: 0,
+      siegeProgressMs: 0,
+      siegeKills: 0,
     },
     mapStage: 1,
     waveTier: 1,
@@ -138,6 +140,16 @@ export function migrateSave(raw: unknown): GameState | null {
     // 마을 시작 HP = 기존 HP를 새 최대 HP로 클램프 (없으면 가득 채움)
     const maxHp = computeVillageStats(data as unknown as GameState).maxHp;
     (data.village as Village).hp = oldHp !== undefined ? Math.min(oldHp, maxHp) : maxHp;
+  }
+
+  // v5 → v6: 실시간 공성 — 침공이 2분간 실시간 진행. 마을에 침공 진행 필드 추가.
+  if (data.version === 5) {
+    const village = data.village as Village;
+    data = {
+      ...data,
+      version: 6,
+      village: { ...village, siegeProgressMs: 0, siegeKills: 0 },
+    };
   }
 
   if (data.version !== SAVE_VERSION) return null;

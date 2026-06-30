@@ -150,10 +150,17 @@ export interface Village {
   buildings: (BuildingSlot | null)[];
   /** 웨이브 패배 후 농성 상태. 수리·강화로 해제될 때까지 웨이브 정산 중단(피해·보상 없음) */
   underSiege: boolean;
-  /** 웨이브 주기 누적 진행도 (사이클 진행도와 같은 원리 — 틱 패턴 무관 정산) */
+  /**
+   * 주기 누적 진행도 [0, WAVE_PERIOD_MS). 앞쪽 CALM_DURATION_MS는 잔잔(회복),
+   * 뒤쪽 INVASION_DURATION_MS는 침공(실시간 전투). 사이클 진행도와 같은 원리 — 틱 패턴 무관 정산.
+   */
   waveProgressMs: number;
-  /** 누적 처리 웨이브 수 (전리품 시드 순번 — 처치 순번과 같은 원리) */
+  /** 누적 처리(격퇴) 웨이브 수 (전리품 시드 순번 — 처치 순번과 같은 원리) */
   wavesProcessed: number;
+  /** 침공 중 현재 교전 몬스터에 누적된 전투 시간(ms). 침공 중이 아니면 0 */
+  siegeProgressMs: number;
+  /** 이번 침공에서 처치한 누적 몬스터 수 (현재 몬스터 타입 = tier.monsters[siegeKills % n] 결정 + 요약) */
+  siegeKills: number;
 }
 
 /** 한 맵 단계의 웨이브 티어. 난이도 ∝ 보상 */
@@ -246,12 +253,27 @@ export interface WaveReport {
   goldWon: number;
   /** 승리한 웨이브에서 얻은 XP 합계(공격+체력, 오프라인이면 50%) — 격퇴 알림용 */
   xpWon: number;
+  /** 이번 정산에서 마을이 받은 총 피해(침공 요약용) */
+  damageTaken: number;
+  /** 이번 정산에서 격퇴(처치)한 몬스터 수(침공 요약용) */
+  monstersDefeated: number;
   /** 패배해 농성에 진입했는가 */
   defeated: boolean;
   /** 패배 시 손상된 구조물 */
   damaged?: 'wall' | 'barracks';
   /** 패배·손상 후 성벽 레벨 */
   wallLevelAfter?: number;
+}
+
+/**
+ * 침공 중 한 번의 타격 이벤트 (UI 플로팅 데미지 숫자용).
+ * 결정성과 무관한 연출 데이터라 라이브 정산에서만 채워지고 세이브에 저장되지 않는다.
+ */
+export interface SiegeHit {
+  /** 'incoming' = 마을이 받은 피해(빨강), 'outgoing' = 마을이 몬스터에 준 피해(초록) */
+  kind: 'incoming' | 'outgoing';
+  monsterId: MonsterId;
+  amount: number;
 }
 
 /** simulate() 한 번이 만들어낸 변화 요약. 오프라인 정산 화면 등에 사용 */
@@ -270,6 +292,11 @@ export interface Gains {
   stopped: StoppedAction[];
   /** 웨이브 방어 결과 (이번 정산에서 웨이브가 발생했을 때만) */
   wave?: WaveReport;
+  /**
+   * 침공 중 발생한 타격 이벤트들 (UI 플로팅 숫자용, 라이브 정산에서만 채워짐).
+   * 최근 일부만 보관(상한). 오프라인 정산에서는 비어 있다(연출 없음).
+   */
+  siegeHits?: SiegeHit[];
 }
 
 export interface SimResult {

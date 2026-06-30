@@ -66,23 +66,28 @@ describe('computeVillageStats', () => {
   });
 });
 
-describe('웨이브 방어 — 안전 티어', () => {
-  it('압도하는 티어(net≤0)는 HP가 깎이지 않고 보상만 쌓인다', () => {
-    const s0 = createInitialState(T0); // T1 슬라임×2 — 새 마을이 압도
-    const { state, gains } = simulate(s0, T0 + 5 * WAVE_PERIOD_MS);
-    expect(gains.wave?.wavesWon).toBe(5);
+describe('실시간 공성 — 강한 마을(무손실 격퇴)', () => {
+  // 공격 레벨이 높아 슬라임을 첫 공격(2.5초) 전에 처치 → 마을이 피해를 전혀 받지 않는다
+  const strongT1 = (patch?: Partial<Village>) =>
+    stateWith({
+      skills: skillsWith({ attack: { xp: xpForLevel(40) } }),
+      village: villageWith({ ...patch }),
+    });
+
+  it('강한 마을은 침공을 무손실로 격퇴하고 보상만 쌓인다', () => {
+    const { state, gains } = simulate(strongT1(), T0 + 3 * WAVE_PERIOD_MS);
+    expect(gains.wave?.wavesWon).toBe(3); // 3주기 = 침공 3회 격퇴
     expect(gains.wave?.defeated).toBe(false);
-    expect(state.village.hp).toBe(250); // 손실 없음
+    expect(gains.wave?.damageTaken).toBe(0); // 첫 공격 전에 처치 → 무손실
+    expect(state.village.hp).toBeGreaterThanOrEqual(250); // 손실 없음(시작 maxHp 이상, 회복만)
     expect(state.village.underSiege).toBe(false);
-    expect(state.monsterKills['slime']).toBe(10); // 5웨이브 × 2마리
-    expect(gains.xp.attack).toBeGreaterThan(0);
+    expect(gains.kills['slime'] ?? 0).toBeGreaterThan(10); // 2분 침공 동안 다수 처치
+    expect(gains.wave?.monstersDefeated).toBeGreaterThan(0);
   });
 
-  it('HP가 깎여 있어도 안전 티어에서는 자연 회복으로 차오른다', () => {
-    const s0 = stateWith({ village: villageWith({ hp: 100 }) });
-    const { state } = simulate(s0, T0 + 3 * WAVE_PERIOD_MS);
+  it('HP가 깎여 있어도 잔잔 구간에 자연 회복으로 차오른다', () => {
+    const { state } = simulate(strongT1({ hp: 100 }), T0 + 3 * WAVE_PERIOD_MS);
     expect(state.village.hp).toBeGreaterThan(100);
-    expect(state.village.hp).toBeLessThanOrEqual(250);
   });
 });
 
@@ -184,13 +189,16 @@ describe('웨이브 방어 — 결정성과 오프라인', () => {
     expect(online).toEqual(offline);
   });
 
-  it('오프라인 정산은 보상(전리품·XP)을 약 50%로 준다 (진행은 동일)', () => {
-    const s0 = createInitialState(T0); // 안전 티어 — HP 손실 없음, 보상만 비교
-    const end = T0 + 40 * WAVE_PERIOD_MS;
+  it('오프라인 정산은 보상(전리품·XP)을 약 50%로 준다 (진행·처치는 동일)', () => {
+    // 스탯을 동결(공격·체력 Lv99)해 레벨업이 처치 수를 바꾸지 않게 → 진행은 동일, 보상만 절반 비교
+    const s0 = stateWith({
+      skills: skillsWith({ attack: { xp: xpForLevel(99) }, hitpoints: { xp: xpForLevel(99) } }),
+    });
+    const end = T0 + 8 * WAVE_PERIOD_MS;
     const online = simulate(s0, end);
     const offline = simulate(s0, end, { offline: true });
 
-    // 진행(웨이브 수)·처치 수는 동일, XP는 정확히 절반(웨이브당 정수 퀀텀)
+    // 진행(격퇴 수)·처치 수는 동일, XP는 정확히 절반(처치당 정수 퀀텀)
     expect(offline.gains.wave?.wavesWon).toBe(online.gains.wave?.wavesWon);
     expect(offline.gains.kills['slime']).toBe(online.gains.kills['slime']);
     expect(offline.gains.xp.attack).toBe(Math.round((online.gains.xp.attack ?? 0) / 2));
@@ -381,5 +389,28 @@ describe('세이브 마이그레이션 v4→v5 (마을 방어 전환)', () => {
     // 기존 진행 보존
     expect(m!.skills.woodcutting.xp).toBe(1000);
     expect(m!.equipment.weapon).toBe('iron_sword');
+  });
+});
+
+describe('세이브 마이그레이션 v5→v6 (실시간 공성)', () => {
+  it('마을에 침공 진행 필드(siegeProgressMs·siegeKills)를 0으로 추가하고 나머지는 보존한다', () => {
+    const base = createInitialState(T0);
+    const v5 = {
+      ...base,
+      version: 5,
+      village: { ...base.village, hp: 123, wavesProcessed: 7 },
+    } as Record<string, unknown>;
+    delete (v5.village as Record<string, unknown>).siegeProgressMs;
+    delete (v5.village as Record<string, unknown>).siegeKills;
+
+    const m = migrateSave(v5);
+    expect(m).not.toBeNull();
+    expect(m!.version).toBe(SAVE_VERSION);
+    expect(m!.village.siegeProgressMs).toBe(0);
+    expect(m!.village.siegeKills).toBe(0);
+    // 기존 마을 진행 보존
+    expect(m!.village.hp).toBe(123);
+    expect(m!.village.wavesProcessed).toBe(7);
+    expect(m!.village.buildings[4]?.id).toBe('headquarters');
   });
 });
