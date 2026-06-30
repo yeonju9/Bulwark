@@ -1,6 +1,7 @@
 import { activelySupplied, effectiveCycleMs, getItem, type ActionDef } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLevel: number }) {
   const game = useGame((s) => s.game);
@@ -35,7 +36,7 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
 
   return (
     <div className={`action-card ${isActive ? 'active' : ''}`}>
-      <div className="action-icon">{action.icon}</div>
+      <div className="action-icon"><GameIcon id={action.id} emoji={action.icon} /></div>
       <div className="action-name">{action.name}</div>
       <div className={`action-meta ${boosted ? 'action-boosted' : ''}`}>
         {(cycleMs / 1000).toFixed(1)}초{boosted && ' ⚡'} · {action.xp} XP
@@ -52,7 +53,7 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
             const enough = have >= input.qty;
             return (
               <span key={input.itemId} className={`input-chip ${enough ? '' : 'short'}`}>
-                {getItem(input.itemId).icon} {have}/{input.qty}
+                <GameIcon id={input.itemId} emoji={getItem(input.itemId).icon} /> {have}/{input.qty}
               </span>
             );
           })}
@@ -62,7 +63,7 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
       <div className="action-outputs">
         {action.outputs.map((output) => (
           <span key={output.itemId} className="output-chip">
-            {getItem(output.itemId).icon} {getItem(output.itemId).name} ×{output.qty}
+            <GameIcon id={output.itemId} emoji={getItem(output.itemId).icon} /> {getItem(output.itemId).name} ×{output.qty}
           </span>
         ))}
         {action.byproducts?.map((entry) => (
@@ -71,7 +72,7 @@ export function ActionCard({ action, skillLevel }: { action: ActionDef; skillLev
             className="output-chip output-chip-rare"
             title={`${Math.round(entry.chance * 100)}% 확률로 추가 획득`}
           >
-            {getItem(entry.itemId).icon} {getItem(entry.itemId).name}{' '}
+            <GameIcon id={entry.itemId} emoji={getItem(entry.itemId).icon} /> {getItem(entry.itemId).name}{' '}
             {Math.round(entry.chance * 100)}%
           </span>
         ))}

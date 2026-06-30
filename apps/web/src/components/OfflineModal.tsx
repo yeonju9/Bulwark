@@ -1,6 +1,7 @@
 import { getItem, getMonster, getSkill, type Gains, type SkillId } from '@idle-rpg/core';
 import { formatDuration, formatNumber } from '../format';
 import { stoppedActionText, useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function OfflineModal({ gains }: { gains: Gains }) {
   const dismiss = useGame((s) => s.dismissOffline);
@@ -59,7 +60,7 @@ export function OfflineModal({ gains }: { gains: Gains }) {
           <div className="modal-section">
             {xpEntries.map(([skillId, xp]) => (
               <div key={skillId}>
-                {getSkill(skillId).icon} {getSkill(skillId).name} +{formatNumber(xp)} XP
+                <GameIcon id={skillId} emoji={getSkill(skillId).icon} /> {getSkill(skillId).name} +{formatNumber(xp)} XP
               </div>
             ))}
           </div>
@@ -69,7 +70,7 @@ export function OfflineModal({ gains }: { gains: Gains }) {
           <div className="modal-section">
             {killEntries.map(([monsterId, count]) => (
               <div key={monsterId}>
-                {getMonster(monsterId).icon} {getMonster(monsterId).name} {formatNumber(count)}마리
+                <GameIcon id={monsterId} emoji={getMonster(monsterId).icon} /> {getMonster(monsterId).name} {formatNumber(count)}마리
                 처치
               </div>
             ))}
@@ -80,7 +81,7 @@ export function OfflineModal({ gains }: { gains: Gains }) {
           <div className="modal-section">
             {itemEntries.map(([itemId, qty]) => (
               <div key={itemId}>
-                {getItem(itemId).icon} {getItem(itemId).name} ×{formatNumber(qty)}
+                <GameIcon id={itemId} emoji={getItem(itemId).icon} /> {getItem(itemId).name} ×{formatNumber(qty)}
               </div>
             ))}
           </div>

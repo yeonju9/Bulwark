@@ -1,6 +1,7 @@
 import { MONSTERS } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function CollectionPanel() {
   const kills = useGame((s) => s.game.monsterKills);
@@ -22,7 +23,9 @@ export function CollectionPanel() {
           const found = count > 0;
           return (
             <div key={monster.id} className={`action-card ${found ? '' : 'locked'}`}>
-              <div className="action-icon">{found ? monster.icon : '❓'}</div>
+              <div className="action-icon">
+                {found ? <GameIcon id={monster.id} emoji={monster.icon} /> : '❓'}
+              </div>
               <div className="action-name">{found ? monster.name : '???'}</div>
               <div className="action-meta">
                 {found ? `처치 ${formatNumber(count)}회` : '아직 만나지 못함'}

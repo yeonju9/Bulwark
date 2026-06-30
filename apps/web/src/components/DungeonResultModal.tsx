@@ -1,6 +1,7 @@
 import { getDungeon, getItem, getMonster, getSkill, type DungeonResult, type SkillId } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function DungeonResultModal({ result }: { result: DungeonResult }) {
   const dismiss = useGame((s) => s.dismissDungeonResult);
@@ -19,7 +20,7 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
       <div className="modal">
         <h2>{result.success ? (result.firstClear ? '🏆 첫 정복!' : '🏆 던전 클리어!') : '💀 패배…'}</h2>
         <p className="modal-sub">
-          {dungeon.icon} {dungeon.name}
+          <GameIcon id={result.dungeonId} emoji={dungeon.icon} /> {dungeon.name}
           {result.success
             ? result.firstClear
               ? ` — 첫 클리어! 다음 웨이브 티어가 해금되었습니다`
@@ -32,7 +33,7 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
             const monster = getMonster(fight.monsterId);
             return (
               <div key={i} className={fight.defeated ? '' : 'modal-warn'}>
-                {fight.defeated ? '✅' : '💀'} {monster.icon} {monster.name}
+                {fight.defeated ? '✅' : '💀'} <GameIcon id={fight.monsterId} emoji={monster.icon} /> {monster.name}
                 {fight.defeated
                   ? ` — ${(fight.timeMs / 1000).toFixed(1)}초, 피해 ${fight.damageTaken}${fight.foodUsed > 0 ? `, 음식 ${fight.foodUsed}개` : ''}`
                   : ' — 여기서 쓰러졌습니다'}
@@ -45,7 +46,7 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
           <div className="modal-section">
             {xpEntries.map(([skillId, xp]) => (
               <div key={skillId}>
-                {getSkill(skillId).icon} {getSkill(skillId).name} +{formatNumber(xp)} XP
+                <GameIcon id={skillId} emoji={getSkill(skillId).icon} /> {getSkill(skillId).name} +{formatNumber(xp)} XP
               </div>
             ))}
           </div>
@@ -55,7 +56,7 @@ export function DungeonResultModal({ result }: { result: DungeonResult }) {
           <div className="modal-section">
             {rewardEntries.map(([itemId, qty]) => (
               <div key={itemId} className="modal-levelup">
-                {getItem(itemId).icon} {getItem(itemId).name} ×{formatNumber(qty)}
+                <GameIcon id={itemId} emoji={getItem(itemId).icon} /> {getItem(itemId).name} ×{formatNumber(qty)}
               </div>
             ))}
           </div>

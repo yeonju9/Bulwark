@@ -1,5 +1,6 @@
 import { COMBAT_SKILL_IDS, computeVillageStats, levelFromXp, SKILLS, xpProgress } from '@idle-rpg/core';
 import { useGame, type Panel } from '../store';
+import { GameIcon } from './GameIcon';
 
 function NavItem({
   panel,
@@ -69,7 +70,7 @@ export function Sidebar() {
             className={`sidebar-item ${panel === skill.id ? 'selected' : ''}`}
             onClick={() => setPanel(skill.id)}
           >
-            <span className="sidebar-icon">{skill.icon}</span>
+            <span className="sidebar-icon"><GameIcon id={skill.id} emoji={skill.icon} /></span>
             <span className="sidebar-info">
               <span className="sidebar-name">
                 {skill.name}

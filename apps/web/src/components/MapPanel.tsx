@@ -146,7 +146,7 @@ function costChips(gold: number, items: { itemId: ItemId; qty: number }[]) {
     <>
       {items.map((it) => (
         <span key={it.itemId} className="chip cost">
-          {getItem(it.itemId).icon} {getItem(it.itemId).name} ×{it.qty}
+          <GameIcon id={it.itemId} emoji={getItem(it.itemId).icon} /> {getItem(it.itemId).name} ×{it.qty}
         </span>
       ))}
       <span className="chip cost">🪙 {formatNumber(gold)}</span>
@@ -387,7 +387,7 @@ export function MapPanel() {
                 {item ? (
                   <>
                     <span className="equip-item">
-                      {item.icon} {item.name}
+                      <GameIcon id={item.id} emoji={item.icon} /> {item.name}
                       <span className="equip-stat">
                         {item.equip!.attack ? ` 공격 +${item.equip!.attack}` : ''}
                         {item.equip!.defense ? ` 방어 +${item.equip!.defense}` : ''}
@@ -408,7 +408,7 @@ export function MapPanel() {
             return (
               <div key={id} className="equip-row">
                 <span className="equip-item">
-                  {item.icon} {item.name} ×{game.inventory[id]}
+                  <GameIcon id={item.id} emoji={item.icon} /> {item.name} ×{game.inventory[id]}
                   <span className="equip-stat">
                     {item.equip!.attack ? ` 공격 +${item.equip!.attack}` : ''}
                     {item.equip!.defense ? ` 방어 +${item.equip!.defense}` : ''}
@@ -429,7 +429,7 @@ export function MapPanel() {
             {game.combatFood ? (
               <>
                 <span className="equip-item">
-                  {getItem(game.combatFood).icon} {getItem(game.combatFood).name} ×
+                  <GameIcon id={game.combatFood} emoji={getItem(game.combatFood).icon} /> {getItem(game.combatFood).name} ×
                   {formatNumber(game.inventory[game.combatFood] ?? 0)}
                   <span className="equip-stat"> 회복 +{getItem(game.combatFood).food!.heal}</span>
                 </span>
@@ -446,7 +446,7 @@ export function MapPanel() {
               return (
                 <div key={id} className="equip-row">
                   <span className="equip-item">
-                    {item.icon} {item.name} ×{formatNumber(game.inventory[id] ?? 0)}
+                    <GameIcon id={item.id} emoji={item.icon} /> {item.name} ×{formatNumber(game.inventory[id] ?? 0)}
                     <span className="equip-stat"> 회복 +{item.food!.heal}</span>
                   </span>
                   <button className="btn btn-small" onClick={() => setFood(id)}>지정</button>
@@ -528,7 +528,7 @@ function DetailContent({
         </p>
         <div className="chips">
           {tier.monsters.map((id, i) => (
-            <span key={i} className="chip">{getMonster(id).icon} {getMonster(id).name}</span>
+            <span key={i} className="chip"><GameIcon id={id} emoji={getMonster(id).icon} /> {getMonster(id).name}</span>
           ))}
           <span className="chip big">보상 ×{tier.rewardMultiplier}</span>
           <span className={`chip ${safe ? 'big' : 'bad'}`}>
@@ -574,7 +574,7 @@ function DetailContent({
           <div className="build-options">
             {buildableBuildings().map((b) => (
               <div key={b.id} className="build-card">
-                <div className="bt">{b.icon} {b.name}</div>
+                <div className="bt"><GameIcon id={b.id} emoji={b.icon} /> {b.name}</div>
                 <div className="chips">
                   {b.attack ? <span className="chip">공격 +{b.attack}</span> : null}
                   {b.hp ? <span className="chip">HP +{b.hp}</span> : null}
@@ -594,7 +594,7 @@ function DetailContent({
       const cost = repairCost(slot.id);
       return (
         <>
-          <h3>🏚️ {def.icon} {def.name} — ⚠️ 파손됨</h3>
+          <h3>🏚️ <GameIcon id={slot.id} emoji={def.icon} /> {def.name} — ⚠️ 파손됨</h3>
           <p className="dim">
             웨이브 패배로 파손되어 효과가 정지되었습니다. 외곽 성벽이 모두 무너진 뒤에는 안쪽 건물이
             파손됩니다(본부 제외).
@@ -613,7 +613,7 @@ function DetailContent({
     if (def.fixed) {
       return (
         <>
-          <h3>🏛️ {def.name} — 마을 스탯</h3>
+          <h3><GameIcon id={slot.id} emoji={def.icon} /> {def.name} — 마을 스탯</h3>
           <p className="dim">{def.description}</p>
           <table className="stat-table">
             <tbody>
@@ -627,7 +627,7 @@ function DetailContent({
     // 일반 건물
     return (
       <>
-        <h3>{def.icon} {def.name}</h3>
+        <h3><GameIcon id={slot.id} emoji={def.icon} /> {def.name}</h3>
         <div className="chips">
           {def.attack ? <span className="chip">공격 +{def.attack}</span> : null}
           {def.hp ? <span className="chip">HP +{def.hp}</span> : null}
@@ -645,7 +645,7 @@ function DetailContent({
     const rewards = first ? dungeon.firstRewards : dungeon.repeatRewards;
     return (
       <>
-        <h3>{dungeon.icon} {dungeon.name} <span className="dim">(권장 공격 Lv {dungeon.level})</span></h3>
+        <h3><GameIcon id={dungeon.id} emoji={dungeon.icon} /> {dungeon.name} <span className="dim">(권장 공격 Lv {dungeon.level})</span></h3>
         <p className="dim">
           언제든 도전 가능 (쿨다운 없음). {first ? '최초 클리어는 큰 보상 + 다음 웨이브 티어 해금' : `반복 보상 (이미 ${clears}회 클리어)`}.
         </p>
@@ -653,14 +653,14 @@ function DetailContent({
           {dungeon.monsters.map((id, i) => {
             const m = getMonster(id);
             const boss = i === dungeon.monsters.length - 1;
-            return <span key={i} className="chip">{m.icon} {m.name}{boss ? ' (보스)' : ''}</span>;
+            return <span key={i} className="chip"><GameIcon id={id} emoji={m.icon} /> {m.name}{boss ? ' (보스)' : ''}</span>;
           })}
         </div>
         <div className="chips">
           {first ? '최초 보상: ' : '반복 보상: '}
           {rewards.map((r) => (
             <span key={r.itemId} className="chip big">
-              {getItem(r.itemId).icon} {getItem(r.itemId).name} ×{r.qty}
+              <GameIcon id={r.itemId} emoji={getItem(r.itemId).icon} /> {getItem(r.itemId).name} ×{r.qty}
               {r.chance < 1 ? ` (${Math.round(r.chance * 100)}%)` : ''}
             </span>
           ))}

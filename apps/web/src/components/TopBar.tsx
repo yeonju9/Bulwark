@@ -9,6 +9,7 @@ import {
 import { formatNumber } from '../format';
 import { useGame } from '../store';
 import { useWavePulse } from '../useWavePulse';
+import { GameIcon } from './GameIcon';
 
 function remainingText(ms: number): string {
   const totalSec = Math.max(0, Math.ceil(ms / 1000));
@@ -36,7 +37,9 @@ export function TopBar() {
             const action = getAction(active.actionId);
             return (
               <span key={active.actionId} className="topbar-active">
-                {action.icon} {action.name}
+                <span className="topbar-active-label">
+                  <GameIcon id={active.actionId} emoji={action.icon} /> {action.name}
+                </span>
                 <button className="btn btn-small" onClick={() => stop(active.actionId)}>
                   중지
                 </button>
@@ -70,7 +73,7 @@ export function TopBar() {
                 className="buff-chip"
                 title={`${item.name} — 남은 시간 ${remainingText(buff.expiresAtMs - game.lastTickAt)}`}
               >
-                {item.icon} {remainingText(buff.expiresAtMs - game.lastTickAt)}
+                <GameIcon id={buff.itemId} emoji={item.icon} /> {remainingText(buff.expiresAtMs - game.lastTickAt)}
               </span>
             );
           })}

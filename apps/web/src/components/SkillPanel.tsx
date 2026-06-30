@@ -2,6 +2,7 @@ import { actionsForSkill, getSkill, xpProgress, type SkillId } from '@idle-rpg/c
 import { formatNumber } from '../format';
 import { useGame } from '../store';
 import { ActionCard } from './ActionCard';
+import { GameIcon } from './GameIcon';
 
 export function SkillPanel({ skillId }: { skillId: SkillId }) {
   const xp = useGame((s) => s.game.skills[skillId].xp);
@@ -13,7 +14,8 @@ export function SkillPanel({ skillId }: { skillId: SkillId }) {
     <div className="skill-panel">
       <div className="skill-header">
         <h2>
-          {skill.icon} {skill.name} <span className="skill-header-level">Lv {level} / 99</span>
+          <GameIcon id={skillId} emoji={skill.icon} /> {skill.name}{' '}
+          <span className="skill-header-level">Lv {level} / 99</span>
         </h2>
         <p className="skill-desc">{skill.description}</p>
         <div className="xp-bar xp-bar-large">

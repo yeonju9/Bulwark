@@ -1,6 +1,7 @@
 import { getSkill, UPGRADE_SPEED_PER_STAGE, UPGRADES } from '@idle-rpg/core';
 import { formatNumber } from '../format';
 import { useGame } from '../store';
+import { GameIcon } from './GameIcon';
 
 export function ShopPanel() {
   const gold = useGame((s) => s.game.gold);
@@ -25,7 +26,9 @@ export function ShopPanel() {
           const speedPct = Math.round((1 - Math.pow(UPGRADE_SPEED_PER_STAGE, stage)) * 100);
           return (
             <div key={upgrade.skillId} className="action-card">
-              <div className="action-icon">{upgrade.icon}</div>
+              <div className="action-icon">
+                <GameIcon id={`tool_${upgrade.skillId}`} emoji={upgrade.icon} />
+              </div>
               <div className="action-name">
                 {getSkill(upgrade.skillId).name} {upgrade.name}
               </div>

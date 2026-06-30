@@ -28,6 +28,16 @@
 ### 아이템 (`data/items.ts`)
 `normal_log` · `oak_log` · `copper_bar` · `iron_bar` … (장비·재료·음식·물약 등)
 
+### 스킬 (`data/skills.ts`)
+`woodcutting` · `mining` · `fishing` · `cooking` … — 사이드바·스킬 화면 헤더·도감/오프라인 정산의 스킬 아이콘.
+
+### 액션 (`data/skills.ts` 의 `gatheringAndCrafting`)
+각 채집/제작 액션의 `id` (예: `wc_normal`·`mi_copper`·`fi_shrimp`·`co_shrimp`). 스킬 화면 카드와 상단바 "진행 중" 표시에 쓰입니다.
+
+### 도구 (상점 업그레이드, `data/upgrades.ts`)
+파일명은 **`tool_<스킬id>`** — `tool_woodcutting`(도끼) · `tool_mining`(곡괭이) · `tool_fishing`(낚싯대).
+스킬 자체 아이콘과 구분되도록 `tool_` 접두사를 씁니다.
+
 ## 동작 방식
 
 `src/icons.ts` 가 이 폴더를 `import.meta.glob` 으로 스캔해 `id → URL` 맵을 만들고,
