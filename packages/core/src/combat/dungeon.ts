@@ -7,6 +7,14 @@ import type { DungeonId, Gains, GameState, ItemId, MonsterId, SkillId } from '..
 
 export type DungeonError = 'unknown-dungeon';
 
+/**
+ * 던전 반복 클리어 시 전투 XP 배율. 최초 클리어는 풀(1.0) 지급, 이후 반복은 이 값만.
+ * 던전은 쿨다운·비용·패배손실이 없어, 반복마다 풀 전투 XP를 주면 결과 모달을 닫고 다시
+ * 누르는 클릭 스팸만으로 "전투레벨은 웨이브 생존으로 성장한다"는 핵심 설계가 무너진다.
+ * (아이템 보상은 firstRewards/repeatRewards로 이미 분리되어 있고, 여기서는 XP 축만 막는다.)
+ */
+export const DUNGEON_REPEAT_XP_MULT = 0.1;
+
 export interface DungeonFight {
   monsterId: MonsterId;
   defeated: boolean;
@@ -65,6 +73,11 @@ export function attemptDungeon(state: GameState, dungeonId: DungeonId): DungeonA
   const fights: DungeonFight[] = [];
   let totalMs = 0;
   let success = true;
+  // 전투 XP는 루프 중 누적만 하고, 결과(최초/반복/패배)가 확정된 뒤 한 번에 지급한다.
+  // 던전 stats는 루프 내내 고정이라 즉시 지급해도 시뮬 결과는 같지만, 반복·부분실패 누수를
+  // 막으려면 결과가 정해진 다음에 배율을 적용해 지급해야 한다.
+  let attackXp = 0;
+  let hitpointsXp = 0;
 
   for (const monsterId of dungeon.monsters) {
     const monster = getMonster(monsterId);
@@ -93,8 +106,8 @@ export function attemptDungeon(state: GameState, dungeonId: DungeonId): DungeonA
       totalMs += timeMs;
       next.monsterKills[monsterId] = (next.monsterKills[monsterId] ?? 0) + 1;
       gains.kills[monsterId] = (gains.kills[monsterId] ?? 0) + 1;
-      grantXp(next, gains, 'attack', monster.xp);
-      grantXp(next, gains, 'hitpoints', hitpointsXpPerKill(damage));
+      attackXp += monster.xp;
+      hitpointsXp += hitpointsXpPerKill(damage);
       fights.push({ monsterId, defeated: true, timeMs, damageTaken: damage, foodUsed });
     } else {
       success = false;
@@ -109,6 +122,12 @@ export function attemptDungeon(state: GameState, dungeonId: DungeonId): DungeonA
     const priorClears = next.dungeonClears[dungeonId] ?? 0;
     firstClear = priorClears === 0;
     next.dungeonClears[dungeonId] = priorClears + 1;
+
+    // 전투 XP: 최초 클리어만 풀 지급, 반복은 DUNGEON_REPEAT_XP_MULT만(클릭 스팸 누수 차단).
+    // 패배(success=false)는 이 블록에 들어오지 않으므로 부분 처치분도 전투 XP 0.
+    const xpMult = firstClear ? 1 : DUNGEON_REPEAT_XP_MULT;
+    grantXp(next, gains, 'attack', Math.round(attackXp * xpMult));
+    grantXp(next, gains, 'hitpoints', Math.round(hitpointsXp * xpMult));
 
     // 보상 난수: 던전별 클리어 순번을 시드로 — 결정적
     const roll = mulberry32(hashString(dungeonId) ^ Math.imul(priorClears + 1, 2654435761));

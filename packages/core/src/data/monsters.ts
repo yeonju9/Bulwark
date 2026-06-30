@@ -34,12 +34,12 @@ const monsterList: MonsterDef[] = [
   },
   {
     id: 'goblin_shaman', name: '고블린 주술사', icon: '🧿', levelRequired: 22,
-    hp: 150, attack: 40, defense: 11, attackIntervalMs: 2600, xp: 60,
+    hp: 150, attack: 33, defense: 11, attackIntervalMs: 2600, xp: 60,
     lootTable: [{ itemId: 'magic_stone', qty: 1, chance: 0.35 }],
   },
   {
     id: 'orc', name: '오크', icon: '👹', levelRequired: 30,
-    hp: 240, attack: 56, defense: 15, attackIntervalMs: 2800, xp: 90,
+    hp: 240, attack: 49, defense: 15, attackIntervalMs: 2800, xp: 90,
     lootTable: [
       { itemId: 'magic_stone', qty: 1, chance: 0.4 },
       { itemId: 'leather', qty: 2, chance: 0.5 },

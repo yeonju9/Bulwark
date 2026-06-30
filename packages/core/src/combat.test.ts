@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptDungeon } from './combat/dungeon';
+import { attemptDungeon, DUNGEON_REPEAT_XP_MULT } from './combat/dungeon';
 import { computeVillageStats, WAVE_PERIOD_MS } from './combat/village';
 import { damageTakenPerKill } from './combat/stats';
 import { buildBuilding, reinforceWall, repairBuilding, selectWaveTier, startAction } from './commands';
@@ -222,6 +222,9 @@ describe('던전 (수동 공략)', () => {
     expect(result!.firstClear).toBe(true);
     expect(state.inventory['mithril_core']).toBe(1); // 최초 보상
     expect(state.dungeonClears['goblin_den']).toBe(1);
+    // 최초 클리어는 전투 XP 풀 지급 (goblin42+goblin42+shaman60+chief180 = 324)
+    expect(result!.xp.attack).toBe(324);
+    expect(result!.xp.hitpoints).toBeGreaterThan(0);
   });
 
   it('쿨다운 없이 재도전 가능하며, 반복 클리어는 소량 보상만 준다', () => {
@@ -231,14 +234,21 @@ describe('던전 (수동 공략)', () => {
     expect(second.result!.firstClear).toBe(false);
     expect(second.state.dungeonClears['goblin_den']).toBe(2);
     expect(second.state.inventory['mithril_core']).toBe(1); // 반복은 강화석을 더 주지 않음
+    // 반복 클리어는 전투 XP도 대폭 감쇠 — 던전 스팸으로 전투레벨을 벌 수 없게 막는다
+    expect(second.result!.xp.attack).toBe(Math.round(324 * DUNGEON_REPEAT_XP_MULT));
+    expect(second.result!.xp.attack!).toBeLessThan(first.result!.xp.attack!);
+    expect(second.result!.xp.hitpoints!).toBeLessThan(first.result!.xp.hitpoints!);
   });
 
-  it('약한 마을은 패배한다 — 클리어 횟수 증가 없음, 손실 없음', () => {
+  it('약한 마을은 패배한다 — 클리어 횟수 증가 없음, 손실 없음, 전투 XP 0', () => {
     const s0 = stateWith({ inventory: { normal_log: 5 } });
     const { state, result } = attemptDungeon(s0, 'goblin_den');
     expect(result!.success).toBe(false);
     expect(state.dungeonClears['goblin_den']).toBeUndefined();
     expect(state.inventory['normal_log']).toBe(5);
+    // 부분 처치분도 전투 XP를 적립하지 않는다 (패배 파밍 차단)
+    expect(result!.xp.attack ?? 0).toBe(0);
+    expect(result!.xp.hitpoints ?? 0).toBe(0);
   });
 
   it('알 수 없는 던전은 거부한다', () => {
